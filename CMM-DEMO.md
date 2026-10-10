@@ -16,6 +16,6 @@ O fechamento Camila Duarte (22 × R$80 + R$100 − R$40 = R$1.820) é uma refer�
 
 ## Acesso real e próximos passos
 
-A migration `supabase/migrations/20261010_cmm_auth_rbac.sql` está aplicada no Cloud. RLS limita gestor, financeiro e campo; o primeiro gestor ainda deve ser criado manualmente. O login e o portal autenticado estão em implementação. Até a integração estar concluída e as permissões testadas, use somente a demonstração e nunca insira dados pessoais reais.
+undefined
 
 Antes de habilitar usuários, desligue o cadastro público no painel Cloud, configure SMTP, crie o gestor via SQL Editor e implemente criação segura de contas por gestor. O navegador nunca deve receber uma service-role key. A demonstração local não é sincronizada com o banco e não deve ser confundida com dados reais.

@@ -32,7 +32,7 @@ O valor do UUID é um exemplo de posição a preencher, não uma credencial. O t
 
 ## Contas de colaboradores
 
-A tela e a função segura de provisionamento ainda precisam ser implementadas. Não coloque a service-role key no navegador ou no repositório. Enquanto não houver uma Edge Function autenticada que valide o perfil gestor, crie usuários pelo painel administrativo e vincule-os pela RPC apenas após revisar o fluxo.
+A ficha de colaborador pode ser criada no portal gestor. A conta Auth ainda deve ser criada pelo painel administrativo e vinculada após revisão do email e do perfil. Não coloque a service-role key no navegador ou no repositório. O provisionamento pelo portal fica pendente de uma Edge Function que valide o perfil gestor.
 
 Recuperação de senha depende da configuração de email/SMTP do projeto. Não envie emails reais nesta fase.
 

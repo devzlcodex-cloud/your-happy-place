@@ -16,6 +16,6 @@ O fechamento Camila Duarte (22 × R$80 + R$100 − R$40 = R$1.820) é uma refer�
 
 ## Acesso real e próximos passos
 
-undefined
+A migration está aplicada no Cloud. O portal de login e as áreas autenticadas por perfil já estão no GitHub e consultam o Cloud sob RLS. A verificação confirmou zero usuários com perfil e zero fichas de equipe neste momento. O primeiro gestor precisa ser criado manualmente; o formulário atual cadastra uma ficha, mas ainda não provisiona uma conta de login. Até configurar o gestor e testar cada perfil, use somente a demonstração e não insira dados pessoais reais.
 
 Antes de habilitar usuários, desligue o cadastro público no painel Cloud, configure SMTP, crie o gestor via SQL Editor e implemente criação segura de contas por gestor. O navegador nunca deve receber uma service-role key. A demonstração local não é sincronizada com o banco e não deve ser confundida com dados reais.

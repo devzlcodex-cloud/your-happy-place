@@ -4,7 +4,7 @@ O Lovable Cloud/Supabase está habilitado. Há uma migração de schema em `migr
 
 ## Estado atual
 
-- O banco Cloud foi confirmado vazio antes desta etapa; a migração ainda não foi aplicada.
+- A migração foi aplicada ao banco Cloud. A consulta de catálogo confirmou 14 tabelas com RLS ativo e 14 policies de leitura; nenhuma tabela recebeu dados.
 - O provedor de autenticação por email está habilitado, mas o app ainda não tem tela de login nem proteção de rotas.
 - Não há fluxo seguro de criação de usuários para o gestor. A RPC `grant_member_access` vincula um usuário Auth já criado a um colaborador, mas não cria conta.
 - O app ainda usa dados fictícios no navegador. Não inserir informações reais até conectar a interface ao banco e validar acesso.

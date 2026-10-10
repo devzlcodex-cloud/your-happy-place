@@ -6,7 +6,7 @@ O Lovable Cloud/Supabase está habilitado. Há uma migração de schema em `migr
 
 - A migração foi aplicada ao banco Cloud. A consulta de catálogo confirmou 14 tabelas com RLS ativo e 14 policies de leitura; nenhuma tabela recebeu dados.
 - O portal de login e as áreas por perfil estão no GitHub; o login chama `get_my_profile`, que só retorna papéis ativos. Contas sem papel ativo são bloqueadas.
-- O gestor pode criar fichas de colaboradores e `grant_member_access` vincula um usuário Auth já criado; ainda não há provisionamento seguro de conta a partir do app.
+- O portal gestor já invoca a Edge Function `create-member-account`, que cria ficha, conta Auth, vínculo de perfil e link de definição de senha sem expor a service-role no navegador. O código está versionado, mas a função ainda precisa ser implantada/configurada no Lovable Cloud.
 - A demonstração local permanece com dados fictícios. A conexão do portal real não torna os dados da demonstração reais nem sincroniza o armazenamento local.
 
 ## Estrutura

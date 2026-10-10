@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as EquipeRouteImport } from './routes/equipe'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as NovoAgendamentoRouteImport } from './routes/novo-agendamento'
 import { Route as AtendimentosIdRouteImport } from './routes/atendimentos.$id'
 
@@ -36,6 +37,11 @@ const EquipeRoute = EquipeRouteImport.update({
   path: '/equipe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NovoAgendamentoRoute = NovoAgendamentoRouteImport.update({
   id: '/novo-agendamento',
   path: '/novo-agendamento',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
+  '/financeiro': typeof FinanceiroRoute
   '/novo-agendamento': typeof NovoAgendamentoRoute
   '/atendimentos/$id': typeof AtendimentosIdRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
+  '/financeiro': typeof FinanceiroRoute
   '/novo-agendamento': typeof NovoAgendamentoRoute
   '/atendimentos/$id': typeof AtendimentosIdRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
   '/equipe': typeof EquipeRoute
+  '/financeiro': typeof FinanceiroRoute
   '/novo-agendamento': typeof NovoAgendamentoRoute
   '/atendimentos/$id': typeof AtendimentosIdRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/equipe'
+    | '/financeiro'
     | '/novo-agendamento'
     | '/atendimentos/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/equipe'
+    | '/financeiro'
     | '/novo-agendamento'
     | '/atendimentos/$id'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/clientes'
     | '/equipe'
+    | '/financeiro'
     | '/novo-agendamento'
     | '/atendimentos/$id'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AgendaRoute: typeof AgendaRoute
   ClientesRoute: typeof ClientesRoute
   EquipeRoute: typeof EquipeRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   NovoAgendamentoRoute: typeof NovoAgendamentoRoute
   AtendimentosIdRoute: typeof AtendimentosIdRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EquipeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/novo-agendamento': {
       id: '/novo-agendamento'
       path: '/novo-agendamento'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgendaRoute: AgendaRoute,
   ClientesRoute: ClientesRoute,
   EquipeRoute: EquipeRoute,
+  FinanceiroRoute: FinanceiroRoute,
   NovoAgendamentoRoute: NovoAgendamentoRoute,
   AtendimentosIdRoute: AtendimentosIdRoute,
 }

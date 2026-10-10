@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const corsHeaders = { 'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') ?? '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin' };
+const appOrigin = Deno.env.get('APP_ORIGIN');
+const corsHeaders = { 'Access-Control-Allow-Origin': appOrigin ?? 'null', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin' };
 const reply = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -9,7 +10,7 @@ Deno.serve(async (request: Request) => {
   const url = Deno.env.get('SUPABASE_URL');
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !anonKey || !serviceKey) return reply({ error: 'Configuração segura do servidor incompleta.' }, 500);
+  if (!appOrigin || !url || !anonKey || !serviceKey) return reply({ error: 'Configuração segura do servidor incompleta.' }, 500);
   const caller = createClient(url, anonKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
   const { data: authData, error: authError } = await caller.auth.getUser();
   if (authError || !authData.user) return reply({ error: 'Sessão inválida.' }, 401);

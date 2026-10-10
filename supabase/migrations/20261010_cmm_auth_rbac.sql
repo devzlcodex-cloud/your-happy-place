@@ -278,8 +278,8 @@ create function public.get_my_profile() returns table (user_id uuid, role public
 language sql stable security definer set search_path = '' as $$
   select auth.uid(), r.role, public.actor_label(), t.id, t.base
   from public.user_roles r left join public.team_members t on t.auth_user_id = r.user_id and t.active
-  where r.user_id = auth.uid() and r.is_active
-$;
+  where r.user_id = auth.uid()
+$$;
 
 -- Gestor: cadastros
 create function public.create_client(_name text, _category text, _contact_name text default null, _email text default null, _phone text default null) returns uuid
@@ -467,7 +467,7 @@ end $$;
 revoke execute on all functions in schema public from public, anon;
 revoke execute on all functions in schema private from public, anon;
 revoke execute on function private.has_current_role(public.app_role), private.user_has_role(uuid, public.app_role),
-  private.is_assigned(uuid), private.can_operate_session(uuid), private.guard_user_roles(), private.audit_user_roles() from public, anon;
+  private.is_assigned(uuid), private.can_operate_session(uuid) from public, anon, authenticated;
 grant execute on function private.has_current_role(public.app_role), private.is_assigned(uuid) to authenticated;
 grant execute on function public.get_my_profile(), public.create_client(text, text, text, text, text), public.upsert_service(text, integer, boolean),
   public.create_team_member(text, public.base_code, text, text[], boolean), public.grant_member_access(uuid, uuid, text, public.app_role),

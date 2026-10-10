@@ -24,7 +24,8 @@
 
 ## Limitações e trabalho pendente
 
-undefined
+- **Interface de autenticação/portal no GitHub:** login por email e senha, busca do papel ativo e áreas separadas foram adicionados. Gestor consulta agenda, clientes, equipe e financeiro e cadastra fichas de colaboradores; financeiro consulta e atualiza itens financeiros; campo consulta somente atendimentos atribuídos e registra check-in/out e indicadores mensais próprios. As operações dependem de RLS/RPC. A demonstração local continua disponível com dados fictícios.
+- **Conta gestora inicial:** precisa de bootstrap manual; não há contas de usuário nem linhas operacionais.
 - **Cadastro público:** autenticação por email foi habilitada, mas cadastro público precisa ser desligado em Authentication > Settings antes de permitir contas. A ausência de formulário de cadastro não desativa o endpoint Auth.
 - **Provisionamento de contas:** falta função de servidor protegida para o gestor criar contas Auth. O primeiro gestor é manual. Não enviar convite/recuperação até configurar e validar SMTP.
 - **Notas livres:** a migration limita tamanho, não consegue detectar todos os dados pessoais/saúde. Campos livres precisam de orientação operacional, retenção e revisão de minimização.

@@ -1,35 +1,38 @@
 # Revisão estática de segurança — CMM Aviation
 
-**Escopo:** leitura da migration e do seed sintético em 10/10/2026. Nenhum SQL foi executado. Não é auditoria independente nem aprovação para produção.
+**Escopo:** leitura estática de `supabase/migrations/20261010_cmm_auth_rbac.sql` em 10/10/2026. Nenhum SQL foi aplicado nesta revisão. Isto não é auditoria independente nem aprovação para produção.
 
-## Alterações aplicadas nesta fundação
+## Controles definidos na migração
 
-- RLS permanece habilitada em todas as tabelas expostas, sem política para `anon`.
-- A migration revoga os privilégios padrão de `public`, `anon` e `authenticated`, e só reabre leitura para usuários autenticados, sujeita às políticas RLS. CRUD via Data API fica fechado enquanto não houver comandos de escrita de domínio.
-- As funções `SECURITY DEFINER` de check-in e conclusão ficam no schema `private`; apenas wrappers `SECURITY INVOKER` estreitos ficam em `public`. Os corpos usam `search_path` vazio e nomes qualificados. A autorização verifica a sessão ativa, papel e vínculo do colaborador.
-- Check-in e conclusão usam `now()` no banco para os registros financeiros/operacionais; a API não aceita timestamps escolhidos pelo navegador.
-- Usuários financeiros deixaram de ler reservas completas, que incluem notas operacionais e referência da aeronave. Eles consultam os livros financeiros e os dados empresariais mínimos do cliente.
-- E-mail de faturamento foi retirado do cadastro inicial de clientes. O modelo não inclui nome de passageiro, CPF, documento de viagem, dados bancários ou saúde.
-- Dados-semente são fictícios e não incluem e-mails de contato.
+- RLS é habilitada nas tabelas de domínio. Privilégios de tabelas e sequences são revogados para `PUBLIC`, `anon` e `authenticated`; usuários autenticados recebem apenas SELECT, condicionado às policies. Escrita de domínio ocorre pelas RPCs listadas e validadas por perfil.
+- Helpers de autorização e atribuição usam schema `private` e não aceitam identidade fornecida pelo browser para verificar o papel do próprio chamador. A função que inspeciona o papel de outro usuário não é concedida ao cliente.
+- O perfil `user_roles` é separado da identidade Auth. Há bloqueio de alteração do próprio papel e trilha `role_audit` para mudanças; o primeiro gestor exige bootstrap manual pelo SQL Editor.
+- Gestores têm acesso operacional integral; financeiro lê livros financeiros e tem ações financeiras permitidas; campo lê reservas atribuídas e registra presença somente na própria sessão. O financeiro não recebe uma função de listagem da equipe.
+- Notas, requisitos operacionais, contatos de clientes e preços ficam em tabelas separadas e com policies distintas. Evite armazenar nome/documento/saúde de passageiros em campos livres.
+- Check-in/checkout e registros de valores usam horário do banco. Checkout usa lock e chaves únicas para impedir duplicidade de repasse e recebível.
+- A senha/service-role key não deve ser exposta ao browser. Ainda não existe função de servidor para criar contas a partir da tela Equipe.
 
-## Limites e riscos restantes
+## Defeitos corrigidos nesta revisão
 
-- **Ainda não validado por execução:** a base não foi aplicada a Supabase local ou hospedado; grants efetivos, políticas, wrappers/RPCs, concorrência e integração PostgREST precisam de testes positivos e negativos por papel.
-- **Escrita de produto incompleta:** reservar/editar, cadastrar cliente/equipe, provisionar contas, ajustar tarifa e aprovar/pagar lançamentos ainda não têm comandos de backend. Não reabra grants gerais para fazer esses fluxos funcionarem.
-- **Texto livre:** notas operacionais e de checkout podem receber dados pessoais por engano. Não usar com passageiros reais antes de definir conteúdo permitido, necessidade, minimização, acesso, retenção e auditoria; interface sozinha não é controle de segurança.
-- **Identificadores indiretos:** referência de aeronave, horário, aeroporto, cliente e notas podem identificar uma pessoa pública por combinação. Restringir operação a quem precisa e evitar copiar itinerário ou nome de passageiro.
-- **Auditoria e ciclo de vida:** ainda não há trilha imutável suficiente de leituras/alterações, retenção/eliminação, exportação controlada, revogação de sessão, revisão periódica de acesso nem procedimento de incidente.
-- **Administração privilegiada:** o provisionamento de `user_profiles.role` e do vínculo empregado-conta precisa ocorrer por processo restrito, fora de cadastro público e sem confiar em valores enviados pelo navegador.
-- **Privilégios elevados:** `service_role`, proprietário da base e SQL Editor ignoram RLS em cenários privilegiados. Segredos de serviço não podem ir para bundle web, log ou repositório.
-- **Configuração do projeto:** manter `private` fora de Exposed Schemas da API Supabase; expor apenas o schema necessário. Desabilitar permissões/grants padrão não usados e validar após migrations.
+- Helpers de papel/atribuição que antes podiam ser consultados com UUIDs arbitrários foram movidos para `private` e limitados ao usuário autenticado nas policies.
+- `finance_collaborators()`, que permitia listar todos os colaboradores, foi removida. Financeiro só pode referenciar pessoa já presente em repasse visível.
+- Search path de funções foi fixado vazio e o direito CREATE no schema público foi revogado.
+- Vínculo de conta Auth tem chave estrangeira; o vínculo também valida email da conta Auth.
+- A métrica mensal de campo separa futuros reais no fuso de São Paulo e rejeita mês ausente.
+- Uma migração antiga conflitante e seu seed sintético foram removidos do caminho ativo. Não há seed para aplicar a Cloud.
 
-## Condições mínimas antes de dados reais
+## Limitações e trabalho pendente
 
-1. Executar a migration em banco de desenvolvimento descartável, com análise estática e testes de autorização para `anon`, cada papel e usuário sem vínculo.
-2. Validar grants além das políticas: leitura e escrita negadas no banco/API onde não previstas, colunas sensíveis indisponíveis, horários financeiros gerados no servidor e wrappers sem caminho para executar operações de terceiros.
-3. Implementar audit trail e comandos de escrita estreitos; testar adulteração de `employee_id`, `role`, preço congelado, status financeiro, notas e ids de terceiros.
-4. Revisar necessidade/finalidade, base legal, aviso/transparência, retenção e resposta a incidentes com a pessoa responsável por privacidade. Aplicar minimização a todos os titulares, sejam ou não figuras públicas.
-5. Integrar o frontend somente com chave pública apropriada e Auth; nunca distribuir `service_role`. Confirmar RLS com as mesmas chamadas do cliente real.
+- **Migração ainda não aplicada/verificada no Cloud:** confirmar tabelas, RLS, policies, grants, funções, tipos e sequences após execução. Banco estava vazio antes da migração.
+- **App ainda é demonstração:** login, logout, guard de sessão, telas por perfil e consultas Supabase ainda não estão conectados; as telas existentes usam estado fictício/localStorage.
+- **Configuração de cadastro público:** autenticação por email foi habilitada, mas cadastro público ainda precisa ser desligado em Authentication > Settings antes de permitir contas. A ausência de formulário de cadastro não desativa o endpoint Auth.
+- **Provisionamento de contas:** falta Edge Function/server function protegida para o gestor criar acesso sem exposição de service-role. O primeiro gestor é manual. Não enviar convite/recuperação até configurar e validar SMTP.
+- **Notas livres:** a migration limita tamanho, não consegue detectar todos os dados pessoais/saúde. Os campos livres precisam de orientação operacional, retenção e revisão de minimização.
+- **Verificação:** não foram executados testes, build ou auditoria por papéis. Não usar dados reais nem publicar como sistema de produção.
 
-Referência técnica consultada: [Supabase — Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security), [Database Functions](https://supabase.com/docs/guides/database/functions) e [Column Level Security](https://supabase.com/docs/guides/database/postgres/column-level-security). A documentação recomenda grants mínimos, testes de allow/deny por operação e `search_path = ''` em funções definidoras de segurança.
+## Pré-condições antes de dados reais
 
+1. Aplicar a migração em desenvolvimento controlado e validar sintaxe, grants e RLS efetivos.
+2. Criar contas de teste para gestor, financeiro, campo e conta sem papel; confirmar isolamento com consultas e tentativas de escrita indevidas.
+3. Implementar e revisar Auth UI, provisionamento e fluxo de revogação antes de atribuir contas reais.
+4. Revisar finalidade/base legal, aviso de privacidade, retenção e resposta a incidentes para dados pessoais de figuras públicas.

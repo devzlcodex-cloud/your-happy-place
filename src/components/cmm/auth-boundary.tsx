@@ -40,7 +40,8 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
   }, []);
   if (demo && !session) return <>{children}<div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/95 px-4 py-2 text-xs shadow-lg"><ShieldCheck className="size-4 text-primary"/>Demonstração local · dados fictícios<Button variant="link" className="h-auto p-0 text-xs" onClick={() => setDemo(false)}>Sair da demonstração</Button></div></>;
   if (!ready) return <div className="grid min-h-screen place-items-center bg-[#f4f8f8] text-sm text-muted-foreground">Verificando acesso seguro…</div>;
-  if (session && recovery) return <PasswordSetup onDone={() => { setRecovery(false); window.history.replaceState({}, document.title, window.location.pathname); }}/>;\n  if (session) return profile ? <RolePortal profile={profile}/> : <AccessDenied error={error} onLogout={() => db.auth.signOut()}/>;
+  if (session && recovery) return <PasswordSetup onDone={() => { setRecovery(false); window.history.replaceState({}, document.title, window.location.pathname); }}/>;
+  if (session) return profile ? <RolePortal profile={profile}/> : <AccessDenied error={error} onLogout={() => db.auth.signOut()}/>;
   return <LoginScreen onLogin={loadProfile} onDemo={() => setDemo(true)}/>;
 }
 

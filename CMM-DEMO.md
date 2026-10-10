@@ -1,12 +1,12 @@
 # CMM Aviation — modo demonstração
 
-O Lovable Cloud/Supabase está habilitado, mas a migração de tabelas ainda não foi aplicada e o app não está conectado a Auth ou banco. As telas continuam usando dados fictícios salvos somente neste navegador. Nenhum usuário ou informação real foi criado e o projeto não foi publicado.
+O Lovable Cloud/Supabase está habilitado e a migration de autenticação e permissões foi aplicada. O banco possui estrutura com 14 tabelas protegidas por RLS, mas ainda não há contas de usuários nem dados operacionais reais. O projeto continua sem publicação.
 
-## Dados
+## Dados da demonstração
 
-Todos os clientes, colaboradores, contatos, aeronaves e valores do protótipo são fictícios. A data inicial é 10/10/2026, com reservas de demonstração entre GRU e VCP. Não há nomes ou documentos de passageiros nem detalhes de saúde.
+As telas existentes continuam usando registros fictícios salvos somente neste navegador. Todos os clientes, colaboradores, contatos, aeronaves e valores do protótipo são fictícios. A data inicial é 10/10/2026, com reservas demonstrativas entre GRU e VCP. Não há nomes/documentos de passageiros nem detalhes de saúde.
 
-O armazenamento local é demonstrativo: não sincroniza entre pessoas ou dispositivos, não tem trilha de auditoria e não oferece autorização de produção. Dados incompatíveis/armazenamento indisponível tornam o modo somente consulta. Não usar dados reais.
+O armazenamento local não sincroniza entre pessoas ou dispositivos, não tem trilha de auditoria e não oferece autorização de produção. Não usar dados reais.
 
 ## Regras simuladas
 
@@ -14,8 +14,8 @@ Preços ficam aplicados à reserva, em centavos. Cada colaborador possui uma ses
 
 O fechamento Camila Duarte (22 × R$80 + R$100 − R$40 = R$1.820) é uma referência fictícia independente. Ajustes adicionais não alteram esse exemplo.
 
-## Próxima etapa de acesso
+## Acesso real e próximos passos
 
-A migração de banco e RLS está em revisão/versionamento em `supabase/migrations/20261010_cmm_auth_rbac.sql`. Antes de ativar usuários, aplique e valide a migração, desligue o cadastro público no painel Cloud, conecte a interface ao Supabase Auth/RPCs e implemente provisionamento seguro de contas pelo gestor. A primeira conta gestora deve receber o papel explicitamente pelo SQL Editor; nunca há promoção automática do primeiro cadastro.
+A migration `supabase/migrations/20261010_cmm_auth_rbac.sql` está aplicada no Cloud. RLS limita gestor, financeiro e campo; o primeiro gestor ainda deve ser criado manualmente. O login e o portal autenticado estão em implementação. Até a integração estar concluída e as permissões testadas, use somente a demonstração e nunca insira dados pessoais reais.
 
-Até que essas etapas estejam concluídas, o protótipo continua demonstrativo e não deve receber dados pessoais reais.
+Antes de habilitar usuários, desligue o cadastro público no painel Cloud, configure SMTP, crie o gestor via SQL Editor e implemente criação segura de contas por gestor. O navegador nunca deve receber uma service-role key. A demonstração local não é sincronizada com o banco e não deve ser confundida com dados reais.

@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { AppShell } from "@/components/cmm/shell";
+import { AuthBoundary } from "@/components/cmm/auth-boundary";
 import { DemoProvider } from "@/lib/cmm/provider";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
@@ -119,7 +120,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <DemoProvider><AppShell><Outlet /></AppShell><Toaster position="top-right" /></DemoProvider>
+      <AuthBoundary><DemoProvider><AppShell><Outlet /></AppShell></DemoProvider><Toaster position="top-right" /></AuthBoundary>
     </QueryClientProvider>
   );
 }

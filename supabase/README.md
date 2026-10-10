@@ -38,4 +38,4 @@ Recuperação de senha depende da configuração de email/SMTP do projeto. Não 
 
 ## Segurança
 
-Consulte [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). A revisão atual é estática. A migração precisa ser aplicada e verificada em ambiente controlado, com contas de teste para cada papel e checagens negativas antes de qualquer uso real.
+Consulte [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). A migration foi aplicada e a revisão verificou RLS, policies e privilégios do catálogo. A função auxiliar `actor_label()` foi revogada para clientes e `get_my_profile()` filtra contas ativas. Ainda faltam testes funcionais com contas por papel e checagens negativas antes de qualquer uso real.

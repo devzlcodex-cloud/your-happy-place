@@ -1,58 +1,41 @@
-# Fundação Supabase — CMM Aviation MVP
+# Banco e acesso — CMM Aviation
 
-Este diretório contém uma base **local e não aplicada** para a futura integração do CMM Aviation com Supabase. Não há URL de projeto, segredo, chave, conta, deploy ou migração de produção neste workspace.
+O Lovable Cloud/Supabase está habilitado. Há uma migração de schema em `migrations/20261010_cmm_auth_rbac.sql`. Ela não inclui seed, usuários nem dados reais.
 
-## Conteúdo
+## Estado atual
 
-- `migrations/0001_cmm_aviation_foundation.sql`: modelo relacional, regras de integridade, RLS e RPCs de check-in/conclusão.
-- `seed/0001_synthetic_demo.sql`: somente registros sintéticos para demonstrar GRU, VCP, operação de aeronave e fechamento de R$ 1.820,00.
+- O banco Cloud foi confirmado vazio antes desta etapa; a migração ainda não foi aplicada.
+- O provedor de autenticação por email está habilitado, mas o app ainda não tem tela de login nem proteção de rotas.
+- Não há fluxo seguro de criação de usuários para o gestor. A RPC `grant_member_access` vincula um usuário Auth já criado a um colaborador, mas não cria conta.
+- O app ainda usa dados fictícios no navegador. Não inserir informações reais até conectar a interface ao banco e validar acesso.
 
-Os valores monetários são inteiros em centavos. Todos os eventos operacionais e financeiros usam `timestamptz`.
+## Estrutura
 
-## Como aplicar quando existir um projeto
+A migração cria papéis `gestor`, `financeiro` e `campo`, registros de colaboradores, clientes, serviços, reservas, atribuições, observações, recebíveis, repasses e ajustes. As tabelas têm RLS. Escritas de domínio passam por RPCs com checagem de papel; não conceda CRUD direto para fazer telas funcionarem.
 
-1. Crie um projeto Supabase e mantenha `private` fora da lista de schemas expostos pela API. O schema `public` contém somente a RPC que o app precisa chamar.
-2. Revise o SQL com o responsável técnico e jurídico. Em especial, escolha o fluxo protegido que criará usuários em `auth.users`, seus registros em `user_profiles`, as funções e o vínculo opcional em `employees.user_profile_id`.
-3. Aplique primeiro `migrations/0001_cmm_aviation_foundation.sql` em uma base de desenvolvimento vazia, pelo fluxo de migrations escolhido para o repositório futuro ou pelo SQL Editor do projeto de desenvolvimento.
-4. Depois de revisar os dados demonstrativos, aplique `seed/0001_synthetic_demo.sql` somente em desenvolvimento ou homologação. Nunca use este seed em produção.
-5. Crie contas de teste e perfis antes de testar a RLS. O seed não cria usuários de autenticação deliberadamente.
-6. Teste as RPCs autenticadas `public.check_in_attendance(p_attendance_id)` e `public.complete_attendance(p_attendance_id, p_checkout_note)` em papéis diferentes e confirme que o cliente não tem acesso à `service_role`.
+A migração foi consolidada como a única fundação ativa. Não reaplique schemas antigos ou seeds incompatíveis.
 
-## Garantias do modelo
+## Primeiro gestor
 
-- `payouts.attendance_id` e `receivables.booking_id` são únicos.
-- `check_in_attendance` e `complete_attendance` só permitem que um colaborador atue no próprio atendimento; ambas são idempotentes. Os horários são gerados no servidor, nunca aceitos do navegador. A conclusão bloqueia a reserva dentro da transação, exige um período de pagamento `open` que cubra o horário de conclusão, usa inserções com conflito seguro e não cria um segundo repasse ou recebível.
-- A cobrança do cliente é calculada a partir dos preços aplicados em `booking_line_items`, não do preço atual do catálogo, e só é criada quando todos os atendimentos estiverem concluídos.
-- O banco não contém CPF, dados bancários, nomes de passageiros ou detalhes de saúde. Acessibilidade é apenas um marcador operacional e uma capacidade da equipe.
+Após aplicar a migração em um ambiente controlado:
 
-## Papéis e RLS
+1. Desative novos cadastros públicos em Authentication > Settings, mantendo o login por email habilitado.
+2. Crie a primeira conta Auth pelo painel de administração do Cloud, sem convite automático se os emails não estiverem configurados.
+3. Copie o UUID da conta criada e execute no SQL Editor:
+   ```sql
+   insert into public.user_roles (user_id, role, assigned_by)
+   values ('UUID_DA_CONTA_AUTH', 'gestor', null);
+   ```
+4. Confirme que a trilha `role_audit` registra a inclusão e que a pessoa entra com o perfil gestor.
 
-Toda tabela tem RLS habilitada e não existe política para `anon`. A migration também revoga as permissões de leitura e gravação padrão e concede somente `SELECT` para `authenticated`. As políticas RLS filtram as linhas visíveis por papel/vínculo. Até implementar comandos RPC específicos e auditados para criar/editar reservas, cadastros e lançamentos financeiros, a API não permite CRUD direto. Isso é deliberado: RLS sozinha não impede que um usuário autorizado altere colunas sensíveis de uma linha que ele pode gravar.
+O valor do UUID é um exemplo de posição a preencher, não uma credencial. O trigger de proteção aceita essa operação manual somente porque o SQL Editor não tem `auth.uid()`; usuários da aplicação não podem atribuir nem alterar o próprio perfil.
 
-| Papel | Acesso concedido |
-| --- | --- |
-| `collaborator` | Catálogo e aeroportos; agendamentos atribuídos; próprio atendimento, repasse e ajuste. Só conclui seu próprio atendimento pela RPC. |
-| `operations` | Consulta dados operacionais autorizados e pode chamar as RPCs de check-in/conclusão. Não consulta os livros financeiros nem grava diretamente nas tabelas. |
-| `finance` | Consulta agenda para contextualização, recebíveis, repasses, ajustes e períodos. Não conclui atendimento e não grava diretamente. |
-| `admin` | Consulta os escopos de operação e financeiro e pode chamar as RPCs operacionais; CRUD e administração de papéis dependem de comandos privilegiados ainda não definidos. |
+## Contas de colaboradores
 
-Nenhuma tabela aceita gravação direta pela API autenticada nesta etapa. Recebíveis e repasses são criados exclusivamente como efeito da RPC de conclusão. A definição de uma trilha administrativa segura para aprovar/pagar esses lançamentos é uma decisão pendente de produto e controle financeiro.
+A tela e a função segura de provisionamento ainda precisam ser implementadas. Não coloque a service-role key no navegador ou no repositório. Enquanto não houver uma Edge Function autenticada que valide o perfil gestor, crie usuários pelo painel administrativo e vincule-os pela RPC apenas após revisar o fluxo.
 
-## Revisão manual obrigatória antes do uso real
+Recuperação de senha depende da configuração de email/SMTP do projeto. Não envie emails reais nesta fase.
 
-- Validar regras de retenção, auditoria e acesso para empregados e clientes com o responsável de privacidade.
-- Integrar o campo à sequência autenticada de `check_in_attendance` e depois `complete_attendance`; a segunda RPC exige o estado `checked_in`.
-- Criar RPCs de escrita com validação de domínio e autorização por papel para clientes, equipe, catálogo, reservas, serviços congelados e períodos; nunca reabrir grants genéricos para substituir esses comandos.
-- Definir um fluxo de provisionamento de conta e vínculo de colaborador por administrador confiável, fora do auto-cadastro público. Nunca aceitar `role` do cliente/browser como fonte de autoridade.
-- Revisar os campos de observação operacional: instruir a equipe a não registrar nome de passageiro, contato pessoal, itinerário identificável ou informação de saúde; limitar acesso e retenção antes de habilitar notas reais.
-- Para dados pessoais de pessoas públicas, aplicar a mesma minimização e proteção de qualquer titular: não armazenar dados de passageiros sem necessidade e base legal definidas; preferir apenas referência operacional e marcador sintético de acessibilidade. Se um caso operacional exigir dado adicional, definir finalidade, acesso restrito, prazo de retenção e trilha de auditoria antes de incluí-lo.
-- O protótipo não possui log imutável de leitura/alteração, exportação controlada, política de retenção/eliminação, gestão de incidentes ou revisão de acesso. Implementar e validar esses controles antes de inserir dados reais.
-- Definir a regra de cancelamento e de cobrança para reservas sem atendimento ou com atendimento cancelado.
-- Abrir um período que cubra o horário do atendimento antes de concluir. Sem período `open`, a RPC aborta e não cria repasse ou recebível. Definir também o processo de fechamento, aprovação/pagamento de repasses e emissão fiscal; estes itens não são automatizados.
-- Em ambiente Supabase, testar a função `SECURITY DEFINER` com a propriedade adequada e manter o `search_path` vazio e nomes qualificados, como na migration. Não conceder `service_role` ao navegador.
-- Cobrir cada política com testes positivos e negativos para `anon` e cada papel autenticado; validar também privilégios SQL (não apenas RLS), acesso por coluna e RPCs, em uma base descartável antes de conectar qualquer frontend.
+## Segurança
 
-## Seed de demonstração
-
-O período `DEMO-2026-09-B` fecha com `22 × R$ 80,00 + R$ 100,00 − R$ 40,00 = R$ 1.820,00`; `DEMO-2026-10-A` está aberto para os exemplos operacionais. Também há reservas abertas para Meet & Assist em GRU, recepção de aeronave + limpeza QTU/QTA + pushback com duas pessoas, e apoio operacional de acessibilidade em VCP.
-
+Consulte [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). A revisão atual é estática. A migração precisa ser aplicada e verificada em ambiente controlado, com contas de teste para cada papel e checagens negativas antes de qualquer uso real.

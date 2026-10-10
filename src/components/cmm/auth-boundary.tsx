@@ -23,13 +23,17 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
     setSession(next);
     if (!next) { setProfile(null); setReady(true); return; }
     setReady(false); setError('');
-    const { data, error: profileError } = await db.rpc('get_my_profile');
-    const record = Array.isArray(data) ? data[0] : data;
-    if (profileError || !record?.role || !['gestor','financeiro','campo'].includes(record.role)) {
+    try {
+      const { data, error: profileError } = await db.rpc('get_my_profile');
+      const record = Array.isArray(data) ? data[0] : data;
+      if (profileError || !record?.role || !['gestor','financeiro','campo'].includes(record.role)) {
+        setProfile(null);
+        setError(profileError?.message || 'Sua conta ainda não tem um perfil ativo. Solicite acesso à coordenação.');
+      } else setProfile(record as Profile);
+    } catch {
       setProfile(null);
-      setError(profileError?.message || 'Sua conta ainda não tem um perfil ativo. Solicite acesso à coordenação.');
-    } else setProfile(record as Profile);
-    setReady(true);
+      setError('Não foi possível validar seu perfil. Verifique a conexão e tente novamente.');
+    } finally { setReady(true); }
   }
   useEffect(() => {
     let alive = true;

@@ -4,9 +4,9 @@ const input: BookingInput = { clientId:'c1', base:'GRU', date:'2026-10-11', time
 describe('CMM business invariants', () => {
  it('freezes prices and creates one aggregated charge only when everyone completes', () => {
   let state = createBooking(createSeed(),input,'new'); const b = state.bookings.find(b => b.id === 'new'); expect(b && bookingTotal(b)).toBe(40000);
-  const original = catalog[0].price; catalog[0].price = 99999; expect(b && bookingTotal(b)).toBe(40000); catalog[0].price = original;
+  const service = catalog[0]; if (!service) throw new Error("Missing service"); const original = service.price; service.price = 99999; expect(b && bookingTotal(b)).toBe(40000); service.price = original;
   state = checkOut(state,'new','t1','now'); expect(state.payouts.some(p => p.bookingId === 'new')).toBe(false);
-  state = checkIn(state,'new','t1','in'); expect(state.bookings.find(b => b.id === 'new')?.sessions[1].checkIn).toBeUndefined();
+  state = checkIn(state,'new','t1','in'); expect(state.bookings.find(b => b.id === 'new')?.sessions[1]?.checkIn).toBeUndefined();
   state = checkOut(state,'new','t1','out'); state = checkOut(state,'new','t1','out-again');
   expect(state.payouts.filter(p => p.bookingId === 'new')).toHaveLength(1); expect(state.receivables.filter(r => r.bookingId === 'new')).toHaveLength(0);
   state = checkIn(state,'new','t2','in'); state = checkOut(state,'new','t2','out'); state = checkOut(state,'new','t2','out-again');

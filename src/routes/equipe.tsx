@@ -1,0 +1,10 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Search, MapPin, Languages } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { team } from '@/lib/cmm/domain';
+import { pageHead } from '@/lib/cmm/head';
+import { Avatar, PageHeading, Empty } from '@/components/cmm/shared';
+export const Route = createFileRoute('/equipe')({ head: () => pageHead('Equipe', 'Diretório demonstrativo dos colaboradores das bases GRU e VCP.'), component: Team });
+function Team() { const [base,setBase] = useState('all'); const [search,setSearch] = useState(''); const filtered = team.filter(t => (base === 'all' || t.base === base) && t.name.toLowerCase().includes(search.toLowerCase())); return <><PageHeading title="Equipe" subtitle="Pessoas certas, em cada etapa da operação." action={false}/><div className="filter-bar"><div className="base-switch">{[['all','Todas as bases'],['GRU','GRU'],['VCP','VCP']].map(([id,label]) => <Button variant="ghost" key={id} className={base === id ? 'selected' : ''} aria-pressed={base === id} onClick={() => setBase(id)}>{label}</Button>)}</div><div className="search-input"><Search className="size-4"/><Input aria-label="Buscar colaborador" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar colaborador"/></div></div><div className="directory-grid">{filtered.map(t => <article key={t.id} className="directory-card"><div className="flex items-center gap-4"><Avatar initials={t.initials}/><div className="min-w-0"><h2>{t.name}</h2><p>{t.role}</p></div></div><div className="directory-details"><span><MapPin/>{t.base} · {t.base === 'GRU' ? 'Guarulhos' : 'Viracopos'}</span><span><Languages/>{t.languages}</span></div><div className="directory-bottom"><span>Colaborador fictício</span><span className="status status-success"><span className="status-dot"/>Ativo</span></div></article>)}</div>{!filtered.length && <Empty text="Nenhum colaborador encontrado."/>}</>; }

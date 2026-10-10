@@ -34,7 +34,7 @@ O valor do UUID é um exemplo de posição a preencher, não uma credencial. O t
 
 A tela Equipe envia nome, email, base e perfil à Edge Function `create-member-account`. Antes de usar, implante a função no Cloud, mantenha `verify_jwt = true` em `supabase/config.toml` e configure `APP_ORIGIN` para a origem exata do app. O servidor valida JWT e perfil gestor, cria o usuário e retorna um link único de recuperação para compartilhamento privado. A função não envia email. Nunca coloque a service-role key no navegador ou repositório.
 
-Recuperação de senha depende da configuração de email/SMTP do projeto. Não envie emails reais nesta fase.
+O link inicial é gerado pelo servidor sem enviar email; o gestor deve entregá-lo ao colaborador por canal privado e evitar registrá-lo em chats ou chamados. Configure `APP_ORIGIN` e a URL de redirecionamento permitida em Auth. Emails de recuperação futura dependem de SMTP.
 
 ## Segurança
 

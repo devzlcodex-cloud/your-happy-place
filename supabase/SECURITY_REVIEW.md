@@ -24,7 +24,7 @@
 
 ## Limitações e trabalho pendente
 
-- **Interface ainda em integração:** o protótipo atual usa estado fictício/localStorage. O novo acesso autenticado deve consultar o Cloud; não use dados fictícios como dados reais.
+undefined
 - **Cadastro público:** autenticação por email foi habilitada, mas cadastro público precisa ser desligado em Authentication > Settings antes de permitir contas. A ausência de formulário de cadastro não desativa o endpoint Auth.
 - **Provisionamento de contas:** falta função de servidor protegida para o gestor criar contas Auth. O primeiro gestor é manual. Não enviar convite/recuperação até configurar e validar SMTP.
 - **Notas livres:** a migration limita tamanho, não consegue detectar todos os dados pessoais/saúde. Campos livres precisam de orientação operacional, retenção e revisão de minimização.

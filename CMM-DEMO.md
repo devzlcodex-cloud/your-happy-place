@@ -1,18 +1,21 @@
 # CMM Aviation — modo demonstração
 
-O banco de dados e a autenticação **não estão conectados**. Nenhum recurso Cloud foi provisionado, nenhuma credencial foi solicitada e o projeto não foi publicado.
+O Lovable Cloud/Supabase está habilitado, mas a migração de tabelas ainda não foi aplicada e o app não está conectado a Auth ou banco. As telas continuam usando dados fictícios salvos somente neste navegador. Nenhum usuário ou informação real foi criado e o projeto não foi publicado.
 
 ## Dados
-Todos os clientes, colaboradores, contatos, aeronaves e valores são fictícios. O catálogo é demonstrativo. A data inicial é 10/10/2026, com oito reservas entre GRU e VCP. Não são usados dados reais de passageiros ou informações de saúde.
 
-O repositório demonstrativo usa armazenamento versionado do navegador, carregado após a hidratação. Alterações persistem na mesma origem/navegador. Não há sincronização entre dispositivos, autenticação, trilha imutável ou segurança de produção. Dados incompatíveis/armazenamento indisponível tornam o modo somente consulta, sem afirmar que alterações foram salvas. Não usar dados reais.
+Todos os clientes, colaboradores, contatos, aeronaves e valores do protótipo são fictícios. A data inicial é 10/10/2026, com reservas de demonstração entre GRU e VCP. Não há nomes ou documentos de passageiros nem detalhes de saúde.
 
-## Regras
-Preços aplicados ficam na reserva, em centavos. Cada colaborador possui uma sessão. Checkout exige check-in e é idempotente, com chave por reserva/colaborador e repasse de R$80. A cobrança agregada surge uma única vez após todos os colaboradores atribuídos concluírem. Observações não podem conter identificação ou saúde de passageiros. Recebimentos, repasses e ajustes são simulações, sem pagamentos externos.
+O armazenamento local é demonstrativo: não sincroniza entre pessoas ou dispositivos, não tem trilha de auditoria e não oferece autorização de produção. Dados incompatíveis/armazenamento indisponível tornam o modo somente consulta. Não usar dados reais.
 
-O fechamento Camila Duarte (22 × R$80 + R$100 − R$40 = R$1.820) é uma referência independente, não integra os totais das reservas. Ajustes adicionais ficam em bloco separado com motivo, autor fictício e data, sem alterar o exemplo de referência.
+## Regras simuladas
 
-## Conexão futura ao projeto Supabase próprio
-A conexão deve ser feita pelo proprietário no editor Lovable. Não inserir chaves privadas no código. Substituir a implementação do repositório por um adaptador remoto, implementar autenticação, permissões e validações do servidor; garantir unicidade/transações no banco para repasses e recebíveis. A interface atual NÃO é uma garantia de integridade para produção, especialmente sob concorrência entre abas/dispositivos.
+Preços ficam aplicados à reserva, em centavos. Cada colaborador possui uma sessão de atendimento. Checkout exige check-in e evita gerar repasse duplicado; a cobrança agregada aparece após a conclusão de toda a equipe. Recebimentos, repasses e ajustes são simulações, sem pagamentos externos.
 
-Um futuro seed Supabase deverá ser aplicado **somente em desenvolvimento/homologação**, nunca automaticamente em produção. Nenhum seed/migration Supabase foi aplicado neste protótipo.
+O fechamento Camila Duarte (22 × R$80 + R$100 − R$40 = R$1.820) é uma referência fictícia independente. Ajustes adicionais não alteram esse exemplo.
+
+## Próxima etapa de acesso
+
+A migração de banco e RLS está em revisão/versionamento em `supabase/migrations/20261010_cmm_auth_rbac.sql`. Antes de ativar usuários, aplique e valide a migração, desligue o cadastro público no painel Cloud, conecte a interface ao Supabase Auth/RPCs e implemente provisionamento seguro de contas pelo gestor. A primeira conta gestora deve receber o papel explicitamente pelo SQL Editor; nunca há promoção automática do primeiro cadastro.
+
+Até que essas etapas estejam concluídas, o protótipo continua demonstrativo e não deve receber dados pessoais reais.

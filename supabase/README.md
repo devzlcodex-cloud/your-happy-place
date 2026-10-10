@@ -16,12 +16,12 @@ Os valores monetários são inteiros em centavos. Todos os eventos operacionais 
 3. Aplique primeiro `migrations/0001_cmm_aviation_foundation.sql` em uma base de desenvolvimento vazia, pelo fluxo de migrations escolhido para o repositório futuro ou pelo SQL Editor do projeto de desenvolvimento.
 4. Depois de revisar os dados demonstrativos, aplique `seed/0001_synthetic_demo.sql` somente em desenvolvimento ou homologação. Nunca use este seed em produção.
 5. Crie contas de teste e perfis antes de testar a RLS. O seed não cria usuários de autenticação deliberadamente.
-6. Teste as RPCs autenticadas `public.check_in_attendance(p_attendance_id, p_checked_in_at)` e `public.complete_attendance(p_attendance_id, p_completed_at, p_checkout_note)` em papéis diferentes e confirme que o cliente não tem acesso à `service_role`.
+6. Teste as RPCs autenticadas `public.check_in_attendance(p_attendance_id)` e `public.complete_attendance(p_attendance_id, p_checkout_note)` em papéis diferentes e confirme que o cliente não tem acesso à `service_role`.
 
 ## Garantias do modelo
 
 - `payouts.attendance_id` e `receivables.booking_id` são únicos.
-- `check_in_attendance` e `complete_attendance` só permitem que um colaborador atue no próprio atendimento; ambas são idempotentes. A conclusão bloqueia a reserva dentro da transação, exige um período de pagamento `open` que cubra o horário de conclusão, usa inserções com conflito seguro e não cria um segundo repasse ou recebível.
+- `check_in_attendance` e `complete_attendance` só permitem que um colaborador atue no próprio atendimento; ambas são idempotentes. Os horários são gerados no servidor, nunca aceitos do navegador. A conclusão bloqueia a reserva dentro da transação, exige um período de pagamento `open` que cubra o horário de conclusão, usa inserções com conflito seguro e não cria um segundo repasse ou recebível.
 - A cobrança do cliente é calculada a partir dos preços aplicados em `booking_line_items`, não do preço atual do catálogo, e só é criada quando todos os atendimentos estiverem concluídos.
 - O banco não contém CPF, dados bancários, nomes de passageiros ou detalhes de saúde. Acessibilidade é apenas um marcador operacional e uma capacidade da equipe.
 

@@ -7,6 +7,7 @@
 - RLS permanece habilitada em todas as tabelas expostas, sem política para `anon`.
 - A migration revoga os privilégios padrão de `public`, `anon` e `authenticated`, e só reabre leitura para usuários autenticados, sujeita às políticas RLS. CRUD via Data API fica fechado enquanto não houver comandos de escrita de domínio.
 - As funções `SECURITY DEFINER` de check-in e conclusão ficam no schema `private`; apenas wrappers `SECURITY INVOKER` estreitos ficam em `public`. Os corpos usam `search_path` vazio e nomes qualificados. A autorização verifica a sessão ativa, papel e vínculo do colaborador.
+- Check-in e conclusão usam `now()` no banco para os registros financeiros/operacionais; a API não aceita timestamps escolhidos pelo navegador.
 - Usuários financeiros deixaram de ler reservas completas, que incluem notas operacionais e referência da aeronave. Eles consultam os livros financeiros e os dados empresariais mínimos do cliente.
 - E-mail de faturamento foi retirado do cadastro inicial de clientes. O modelo não inclui nome de passageiro, CPF, documento de viagem, dados bancários ou saúde.
 - Dados-semente são fictícios e não incluem e-mails de contato.
@@ -25,7 +26,7 @@
 ## Condições mínimas antes de dados reais
 
 1. Executar a migration em banco de desenvolvimento descartável, com análise estática e testes de autorização para `anon`, cada papel e usuário sem vínculo.
-2. Validar grants além das políticas: leitura e escrita negadas no banco/API onde não previstas, colunas sensíveis indisponíveis e wrappers sem caminho para executar operações de terceiros.
+2. Validar grants além das políticas: leitura e escrita negadas no banco/API onde não previstas, colunas sensíveis indisponíveis, horários financeiros gerados no servidor e wrappers sem caminho para executar operações de terceiros.
 3. Implementar audit trail e comandos de escrita estreitos; testar adulteração de `employee_id`, `role`, preço congelado, status financeiro, notas e ids de terceiros.
 4. Revisar necessidade/finalidade, base legal, aviso/transparência, retenção e resposta a incidentes com a pessoa responsável por privacidade. Aplicar minimização a todos os titulares, sejam ou não figuras públicas.
 5. Integrar o frontend somente com chave pública apropriada e Auth; nunca distribuir `service_role`. Confirmar RLS com as mesmas chamadas do cliente real.

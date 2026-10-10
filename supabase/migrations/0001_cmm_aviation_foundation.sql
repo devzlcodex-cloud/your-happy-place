@@ -236,7 +236,6 @@ $$;
 -- It locks the booking, so two simultaneous final check-outs cannot create two receivables.
 create function private.complete_attendance_impl(
   p_attendance_id uuid,
-  p_completed_at timestamptz default now(),
   p_checkout_note text default null
 )
 returns table (attendance_id uuid, payout_id uuid, receivable_id uuid)
@@ -253,6 +252,7 @@ declare
   v_employee_id uuid;
   v_pay_period_id uuid;
   v_amount_cents integer;
+  v_completed_at timestamptz := now();
 begin
   if auth.uid() is null then
     raise exception 'Authentication is required';
@@ -309,8 +309,8 @@ begin
   select pp.id into v_pay_period_id
   from public.pay_periods as pp
   where pp.status = 'open'
-    and pp.starts_at <= p_completed_at
-    and pp.ends_at >= p_completed_at
+    and pp.starts_at <= v_completed_at
+    and pp.ends_at >= v_completed_at
   order by pp.starts_at desc
   limit 1
   for share;
@@ -320,13 +320,13 @@ begin
   end if;
 
   if v_attendance.status = 'checked_in' then
-    if p_completed_at < v_attendance.checked_in_at then
+    if v_completed_at < v_attendance.checked_in_at then
       raise exception 'Completion time cannot precede check-in';
     end if;
 
     update public.attendances
     set status = 'completed',
-        completed_at = p_completed_at,
+        completed_at = v_completed_at,
         checkout_note = coalesce(p_checkout_note, checkout_note)
     where id = v_attendance.id;
   end if;
@@ -370,8 +370,7 @@ $$;
 -- Check-in uses the same narrow authorization model as completion, so a collaborator never
 -- receives a direct UPDATE policy over attendances.
 create function private.check_in_attendance_impl(
-  p_attendance_id uuid,
-  p_checked_in_at timestamptz default now()
+  p_attendance_id uuid
 )
 returns table (attendance_id uuid, attendance_status public.attendance_status)
 language plpgsql
@@ -420,7 +419,7 @@ begin
 
   if v_attendance.status = 'scheduled' then
     update public.attendances
-    set status = 'checked_in', checked_in_at = p_checked_in_at
+    set status = 'checked_in', checked_in_at = now()
     where id = v_attendance.id;
 
     update public.bookings
@@ -438,7 +437,6 @@ $$;
 -- SECURITY INVOKER wrappers are the only attendance RPCs exposed through the Data API.
 create function public.complete_attendance(
   p_attendance_id uuid,
-  p_completed_at timestamptz default now(),
   p_checkout_note text default null
 )
 returns table (attendance_id uuid, payout_id uuid, receivable_id uuid)
@@ -446,37 +444,36 @@ language sql
 security invoker
 set search_path = ''
 as $$
-  select * from private.complete_attendance_impl(p_attendance_id, p_completed_at, p_checkout_note)
+  select * from private.complete_attendance_impl(p_attendance_id, p_checkout_note)
 $$;
 
 create function public.check_in_attendance(
-  p_attendance_id uuid,
-  p_checked_in_at timestamptz default now()
+  p_attendance_id uuid
 )
 returns table (attendance_id uuid, attendance_status public.attendance_status)
 language sql
 security invoker
 set search_path = ''
 as $$
-  select * from private.check_in_attendance_impl(p_attendance_id, p_checked_in_at)
+  select * from private.check_in_attendance_impl(p_attendance_id)
 $$;
 
 revoke all on function public.set_updated_at() from public;
 revoke all on function private.current_app_role() from public;
 revoke all on function private.is_management_role() from public;
 revoke all on function private.is_finance_role() from public;
-revoke all on function private.complete_attendance_impl(uuid, timestamptz, text) from public;
-revoke all on function private.check_in_attendance_impl(uuid, timestamptz) from public;
-revoke all on function public.complete_attendance(uuid, timestamptz, text) from public;
-revoke all on function public.check_in_attendance(uuid, timestamptz) from public;
+revoke all on function private.complete_attendance_impl(uuid, text) from public;
+revoke all on function private.check_in_attendance_impl(uuid) from public;
+revoke all on function public.complete_attendance(uuid, text) from public;
+revoke all on function public.check_in_attendance(uuid) from public;
 grant usage on schema private to authenticated;
 grant execute on function private.current_app_role() to authenticated;
 grant execute on function private.is_management_role() to authenticated;
 grant execute on function private.is_finance_role() to authenticated;
-grant execute on function private.complete_attendance_impl(uuid, timestamptz, text) to authenticated;
-grant execute on function private.check_in_attendance_impl(uuid, timestamptz) to authenticated;
-grant execute on function public.complete_attendance(uuid, timestamptz, text) to authenticated;
-grant execute on function public.check_in_attendance(uuid, timestamptz) to authenticated;
+grant execute on function private.complete_attendance_impl(uuid, text) to authenticated;
+grant execute on function private.check_in_attendance_impl(uuid) to authenticated;
+grant execute on function public.complete_attendance(uuid, text) to authenticated;
+grant execute on function public.check_in_attendance(uuid) to authenticated;
 
 alter table public.user_profiles enable row level security;
 alter table public.airports enable row level security;

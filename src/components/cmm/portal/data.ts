@@ -105,7 +105,7 @@ export const useFinance = (enabled = true) =>
     queryFn: async () => {
       const [r, p, a] = await Promise.all([
         db.from('receivables').select('id,booking_code,client_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
-        db.from('payouts').select('id,booking_code,collaborator_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
+        db.from('payouts').select('id,booking_code,team_member_id,collaborator_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
         db.from('financial_adjustments').select('id,collaborator_name,amount_cents,reason,author_name,created_at').order('created_at', { ascending: false }),
       ]);
       return { receivables: rows(r), payouts: rows(p), adjustments: rows(a) };

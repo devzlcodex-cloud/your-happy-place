@@ -43,6 +43,129 @@ export type Database = {
           },
         ]
       }
+      booking_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string
+          booking_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          scope: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name: string
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          scope?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_evidence: {
+        Row: {
+          author_id: string | null
+          author_name: string
+          booking_id: string
+          caption: string | null
+          created_at: string
+          id: string
+          storage_path: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name: string
+          booking_id: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          storage_path: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string
+          booking_id?: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_evidence_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_flights: {
+        Row: {
+          airline: string | null
+          booking_id: string
+          eta: string | null
+          flight_number: string | null
+          flight_status: string
+          gate: string | null
+          terminal: string | null
+          updated_at: string
+          updated_by_name: string | null
+        }
+        Insert: {
+          airline?: string | null
+          booking_id: string
+          eta?: string | null
+          flight_number?: string | null
+          flight_status?: string
+          gate?: string | null
+          terminal?: string | null
+          updated_at?: string
+          updated_by_name?: string | null
+        }
+        Update: {
+          airline?: string | null
+          booking_id?: string
+          eta?: string | null
+          flight_number?: string | null
+          flight_status?: string
+          gate?: string | null
+          terminal?: string | null
+          updated_at?: string
+          updated_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_flights_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_observations: {
         Row: {
           author_id: string | null
@@ -323,6 +446,8 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           paid_by_name: string | null
+          payment_method: string | null
+          payment_reference: string | null
           service_date: string
           session_id: string
           status: Database["public"]["Enums"]["settlement_status"]
@@ -338,6 +463,8 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_name?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
           service_date: string
           session_id: string
           status?: Database["public"]["Enums"]["settlement_status"]
@@ -353,6 +480,8 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_name?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
           service_date?: string
           session_id?: string
           status?: Database["public"]["Enums"]["settlement_status"]
@@ -393,6 +522,8 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           paid_by_name: string | null
+          payment_method: string | null
+          payment_reference: string | null
           service_date: string
           status: Database["public"]["Enums"]["settlement_status"]
         }
@@ -406,6 +537,8 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_name?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
           service_date: string
           status?: Database["public"]["Enums"]["settlement_status"]
         }
@@ -419,6 +552,8 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           paid_by_name?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
           service_date?: string
           status?: Database["public"]["Enums"]["settlement_status"]
         }
@@ -578,6 +713,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      add_evidence: {
+        Args: { _booking_id: string; _caption?: string; _path: string }
+        Returns: undefined
+      }
       add_observation: {
         Args: { _body: string; _booking_id: string }
         Returns: undefined
@@ -655,6 +794,26 @@ export type Database = {
           projected_cents: number
           upcoming_count: number
         }[]
+      }
+      set_flight_info: {
+        Args: {
+          _airline: string
+          _booking_id: string
+          _eta?: string
+          _flight: string
+          _gate: string
+          _status: string
+          _terminal: string
+        }
+        Returns: undefined
+      }
+      settle_payout: {
+        Args: { _id: string; _method: string; _reference?: string }
+        Returns: undefined
+      }
+      settle_receivable: {
+        Args: { _id: string; _method: string; _reference?: string }
+        Returns: undefined
       }
       upsert_service: {
         Args: { _active?: boolean; _name: string; _price_cents: number }

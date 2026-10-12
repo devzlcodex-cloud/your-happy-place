@@ -1,17 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GestorForms } from './gestor-forms';
-import { CalendarDays, ContactRound, LayoutDashboard, LogOut, ShieldCheck, Wallet, UsersRound, Plane, RefreshCw } from 'lucide-react';
-
-type Role = 'gestor' | 'financeiro' | 'campo';
-type Profile = { user_id: string; role: Role; display_name: string; team_member_id: string | null; base: string | null };
-type Row = Record<string, unknown>;
-const db = supabase as unknown as SupabaseClient<any>;
-const money = (value: unknown) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0) / 100);
-const date = (value: unknown) => typeof value === 'string' ? new Date(value.length === 10 ? value + 'T12:00:00' : value).toLocaleDateString('pt-BR') : '—';
+import { PortalShell } from './portal/portal-shell';
+import { db } from './portal/data';
+import type { Profile } from './portal/lib';
 
 export function AuthBoundary({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<any>(null);
@@ -20,88 +13,179 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const [recovery, setRecovery] = useState(false);
   const [demo, setDemo] = useState(false);
+
   async function loadProfile(next: any) {
     setSession(next);
-    if (!next) { setProfile(null); setReady(true); return; }
-    setReady(false); setError('');
+    if (!next) {
+      setProfile(null);
+      setReady(true);
+      return;
+    }
+    setReady(false);
+    setError('');
     try {
       const { data, error: profileError } = await db.rpc('get_my_profile');
       const record = Array.isArray(data) ? data[0] : data;
-      if (profileError || !record?.role || !['gestor','financeiro','campo'].includes(record.role)) {
+      if (profileError || !record?.role || !['gestor', 'financeiro', 'campo'].includes(record.role)) {
         setProfile(null);
         setError(profileError?.message || 'Sua conta ainda não tem um perfil ativo. Solicite acesso à coordenação.');
       } else setProfile(record as Profile);
     } catch {
       setProfile(null);
       setError('Não foi possível validar seu perfil. Verifique a conexão e tente novamente.');
-    } finally { setReady(true); }
+    } finally {
+      setReady(true);
+    }
   }
+
   useEffect(() => {
     let alive = true;
     if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) setRecovery(true);
-    db.auth.getSession().then(({ data }: any) => { if (alive) void loadProfile(data.session); });
-    const { data: listener } = db.auth.onAuthStateChange((event: string, next: any) => { if (event === 'PASSWORD_RECOVERY') setRecovery(true); if (alive) void loadProfile(next); });
-    return () => { alive = false; listener.subscription.unsubscribe(); };
+    db.auth.getSession().then(({ data }: any) => {
+      if (alive) void loadProfile(data.session);
+    });
+    const { data: listener } = db.auth.onAuthStateChange((event: string, next: any) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+      if (alive) void loadProfile(next);
+    });
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
-  if (demo && !session) return <>{children}<div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/95 px-4 py-2 text-xs shadow-lg"><ShieldCheck className="size-4 text-primary"/>Demonstração local · dados fictícios<Button variant="link" className="h-auto p-0 text-xs" onClick={() => setDemo(false)}>Sair da demonstração</Button></div></>;
-  if (!ready) return <div className="grid min-h-screen place-items-center bg-[#f4f8f8] text-sm text-muted-foreground">Verificando acesso seguro…</div>;
-  if (session && recovery) return <PasswordSetup onDone={() => { setRecovery(false); window.history.replaceState({}, document.title, window.location.pathname); }}/>;
-  if (session) return profile ? <RolePortal profile={profile}/> : <AccessDenied error={error} onLogout={() => db.auth.signOut()}/>;
-  return <LoginScreen onLogin={loadProfile} onDemo={() => setDemo(true)}/>;
+
+  if (demo && !session)
+    return (
+      <>
+        {children}
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/95 px-4 py-2 text-xs shadow-lg">
+          <ShieldCheck className="size-4 text-primary" />
+          Demonstração local com dados fictícios
+          <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setDemo(false)}>Sair da demonstração</Button>
+        </div>
+      </>
+    );
+  if (!ready) return <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">Verificando acesso seguro…</div>;
+  if (session && recovery)
+    return (
+      <PasswordSetup
+        onDone={() => {
+          setRecovery(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }}
+      />
+    );
+  if (session) return profile ? <PortalShell profile={profile} /> : <AccessDenied error={error} onLogout={() => db.auth.signOut()} />;
+  return <LoginScreen onLogin={loadProfile} onDemo={() => setDemo(true)} />;
 }
 
 function LoginScreen({ onLogin, onDemo }: { onLogin: (session: any) => Promise<void>; onDemo: () => void }) {
-  const [email,setEmail] = useState(''); const [password,setPassword] = useState(''); const [busy,setBusy] = useState(false); const [error,setError] = useState('');
-  async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); setError(''); const {data,error:authError} = await db.auth.signInWithPassword({email:email.trim(),password}); setBusy(false); if(authError) setError('Não foi possível entrar. Confira email e senha ou solicite suporte à coordenação.'); else await onLogin(data.session); }
-  return <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,#dff3f0_0%,#f4f8f8_55%,#edf3f3_100%)] px-4 py-10"><div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white bg-white shadow-[0_28px_90px_-40px_rgba(3,68,73,.38)] md:grid-cols-[1.05fr_.95fr]"><section className="relative hidden min-h-[560px] flex-col justify-between overflow-hidden bg-[#064c50] p-12 text-white md:flex"><div className="absolute -right-24 -top-24 size-80 rounded-full border border-white/10"/><div className="absolute -bottom-32 -left-20 size-96 rounded-full border border-white/10"/><div className="relative"><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-xl bg-white/10"><Plane/></span><div><strong className="block text-lg tracking-[.16em]">CMM</strong><span className="text-[10px] tracking-[.34em] text-white/70">AVIATION</span></div></div><div className="mt-24 max-w-sm"><p className="text-xs font-semibold uppercase tracking-[.24em] text-[#a9e4d0]">Central de operações</p><h1 className="mt-4 font-serif text-4xl leading-tight">Atendimento coordenado. Operação sob controle.</h1><p className="mt-5 text-sm leading-6 text-white/75">Acesse sua área de trabalho com permissões adequadas à sua função.</p></div></div><p className="relative text-xs text-white/55">Acesso restrito · CMM Aviation</p></section><section className="flex min-h-[560px] flex-col justify-center p-7 sm:p-12"><div className="mb-10 md:hidden"><strong className="text-lg tracking-[.16em] text-[#064c50]">CMM AVIATION</strong></div><p className="text-xs font-semibold uppercase tracking-[.2em] text-[#168d88]">Portal seguro</p><h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">Bem-vindo de volta</h2><p className="mt-2 text-sm text-slate-500">Entre com as credenciais fornecidas pela coordenação.</p><form onSubmit={submit} className="mt-8 space-y-5"><label className="block text-sm font-medium text-slate-700">Email<Input required type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} className="mt-2 h-12 rounded-xl" placeholder="nome@empresa.com"/></label><label className="block text-sm font-medium text-slate-700">Senha<Input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 h-12 rounded-xl" placeholder="Sua senha"/></label>{error&&<p role="alert" className="text-sm text-red-600">{error}</p>}<Button disabled={busy} className="h-12 w-full rounded-xl bg-[#087c79] text-white hover:bg-[#066966]">{busy?'Validando acesso…':'Entrar no sistema'}</Button></form><div className="mt-8 border-t pt-6"><p className="text-xs leading-5 text-slate-500">Ainda sem credenciais? A coordenação precisa cadastrar sua conta e atribuir um perfil antes do primeiro acesso.</p><Button variant="link" className="mt-3 h-auto p-0 text-xs text-slate-500" onClick={onDemo}>Explorar demonstração fictícia</Button></div></section></div></main>;
-}
-function PasswordSetup({onDone}:{onDone:()=>void}) {
-  const [password,setPassword]=useState(''); const [confirm,setConfirm]=useState(''); const [error,setError]=useState(''); const [busy,setBusy]=useState(false);
-  async function submit(e:FormEvent) { e.preventDefault(); if(password.length<12){setError('Use pelo menos 12 caracteres.');return;} if(password!==confirm){setError('As senhas não coincidem.');return;} setBusy(true);setError('');const {error:saveError}=await db.auth.updateUser({password});setBusy(false);if(saveError)setError('Não foi possível definir a senha. Solicite um novo acesso à coordenação.');else onDone(); }
-  return <main className="grid min-h-screen place-items-center bg-[#f4f8f8] p-4"><form onSubmit={submit} className="w-full max-w-md rounded-3xl border bg-white p-7 shadow-xl sm:p-10"><p className="text-xs font-semibold uppercase tracking-[.2em] text-[#168d88]">CMM Aviation · primeiro acesso</p><h1 className="mt-3 text-2xl font-semibold">Defina sua senha</h1><p className="mt-2 text-sm text-slate-500">Escolha uma senha com pelo menos 12 caracteres.</p><label className="mt-6 block text-sm font-medium">Nova senha<Input type="password" required minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 h-12 rounded-xl"/></label><label className="mt-4 block text-sm font-medium">Confirmar senha<Input type="password" required minLength={12} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="mt-2 h-12 rounded-xl"/></label>{error&&<p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}<Button disabled={busy} className="mt-6 h-12 w-full rounded-xl bg-[#087c79]">{busy?'Salvando…':'Salvar senha e entrar'}</Button></form></main>;
-}
-function AccessDenied({error,onLogout}:{error:string;onLogout:()=>void}) { return <div className="grid min-h-screen place-items-center bg-slate-50 p-5"><section className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm"><ShieldCheck className="mx-auto size-10 text-amber-600"/><h1 className="mt-4 text-xl font-semibold">Acesso ainda não configurado</h1><p className="mt-2 text-sm text-slate-600">{error}</p><Button className="mt-6" variant="outline" onClick={onLogout}>Sair da conta</Button></section></div>; }
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-function RolePortal({profile}:{profile:Profile}) {
-  const role=profile.role;
-  const items=useMemo(()=>role==='gestor'?[['inicio','Visão geral',LayoutDashboard],['agenda','Agenda',CalendarDays],['clientes','Clientes',ContactRound],['equipe','Equipe',UsersRound],['financeiro','Financeiro',Wallet]]:role==='financeiro'?[['financeiro','Financeiro',Wallet]]:[['agenda','Meus atendimentos',CalendarDays],['inicio','Meu mês',LayoutDashboard]], [role]);
-  const [page,setPage]=useState(items[0][0]); const [rows,setRows]=useState<Row[]>([]); const [summary,setSummary]=useState<Row|null>(null); const [busy,setBusy]=useState(false); const [notice,setNotice]=useState(''); const [name,setName]=useState(''); const [base,setBase]=useState('GRU'); const [email,setEmail]=useState(''); const [newRole,setNewRole]=useState('campo'); const [accessLink,setAccessLink]=useState('');
-  const title=items.find(x=>x[0]===page)?.[1] as string;
-  async function refresh() {
-    setBusy(true); setNotice('');
-    if(role==='campo') {
-      const first=new Date(); first.setDate(1); const month=first.toISOString().slice(0,10);
-      const [a,b]=await Promise.all([db.rpc('my_month_summary',{_month:month}),db.from('bookings').select('id,code,scheduled_date,scheduled_time,base,service_summary,booking_sessions!inner(id,check_in_at,check_out_at,team_member_id)').eq('booking_sessions.team_member_id',profile.team_member_id).order('scheduled_date',{ascending:true})]);
-      setSummary(Array.isArray(a.data)?a.data[0]||null:a.data||null); setRows(b.data||[]); setNotice(a.error?.message||b.error?.message||'');
-    } else if(page==='financeiro') {
-      const [a,b,c]=await Promise.all([db.from('receivables').select('id,booking_code,client_name,service_date,amount_cents,status,paid_at').order('service_date',{ascending:false}),db.from('payouts').select('id,booking_code,collaborator_name,service_date,amount_cents,status,paid_at').order('service_date',{ascending:false}),db.from('financial_adjustments').select('id,collaborator_name,amount_cents,reason,created_at').order('created_at',{ascending:false})]);
-      setRows([...(a.data||[]).map((x:Row)=>({...x,_kind:'Recebível'})),...(b.data||[]).map((x:Row)=>({...x,_kind:'Repasse'})),...(c.data||[]).map((x:Row)=>({...x,_kind:'Ajuste'}))]); setNotice([a.error,b.error,c.error].find(Boolean)?.message||'');
-    } else if(page==='agenda') {
-      const {data,error}=await db.from('bookings').select('id,code,scheduled_date,scheduled_time,base,service_summary,booking_sessions!inner(id,collaborator_name,check_in_at,check_out_at,team_member_id)').order('scheduled_date',{ascending:true});
-      setRows(data||[]); setNotice(error?.message||'');
-    } else if(page==='clientes') {
-      const {data,error}=await db.from('clients').select('id,name,category,created_at').order('name'); setRows(data||[]); setNotice(error?.message||'');
-    } else if(page==='equipe') {
-      const {data,error}=await db.from('team_members').select('id,name,base,job_title,login_email,access_role,access_status,active').order('name'); setRows(data||[]); setNotice(error?.message||'');
-    } else {
-      const [a,b,c]=await Promise.all([db.from('bookings').select('*',{count:'exact',head:true}),db.from('clients').select('*',{count:'exact',head:true}),db.from('team_members').select('*',{count:'exact',head:true})]);
-      setSummary({bookings:a.count||0,clients:b.count||0,team:c.count||0});setRows([]);setNotice([a.error,b.error,c.error].find(Boolean)?.message||'');
-    }
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    const { data, error: authError } = await db.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
+    if (authError) setError('Não foi possível entrar. Confira email e senha ou solicite suporte à coordenação.');
+    else await onLogin(data.session);
   }
-  useEffect(()=>{void refresh();},[page,role,profile.team_member_id]);
-  async function action(fn:string,args:Row) { const {error}=await db.rpc(fn,args); if(error) setNotice(error.message); else {setNotice('Alteração registrada.');await refresh();} }
-  async function addMember(e:FormEvent) {e.preventDefault();setNotice('');setAccessLink('');const {data,error}=await db.functions.invoke('create-member-account',{body:{name:name.trim(),base,email:email.trim(),role:newRole}});if(error){setNotice('Não foi possível criar o acesso. Confirme se a função segura está ativa no Cloud e revise os dados.');return;}setName('');setEmail('');setAccessLink(data.action_link);setNotice(data.message||'Conta e perfil criados.');await refresh();}
-  async function pay(id:string,kind:string){await action(kind==='Recebível'?'mark_receivable_paid':'mark_payout_paid',{_id:id});}
-  return <div className="min-h-screen bg-[#f4f8f8] text-slate-900"><aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-slate-200 bg-white p-5 md:flex"><a className="mb-10 flex items-center gap-3 text-[#064c50]" href="/"><span className="grid size-10 place-items-center rounded-xl bg-[#e4f3f0]"><Plane/></span><span><strong className="block tracking-[.16em]">CMM</strong><small className="tracking-[.28em]">AVIATION</small></span></a><p className="mb-3 text-[10px] font-bold tracking-[.2em] text-slate-400">ÁREA DE TRABALHO</p><nav className="space-y-1">{items.map(([key,label,Icon]:any)=><button key={key} onClick={()=>setPage(key)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium ${page===key?'bg-[#e8f4f2] text-[#075e61]':'text-slate-600 hover:bg-slate-50'}`}><Icon className="size-4"/>{label}</button>)}</nav><div className="mt-auto rounded-2xl bg-[#f0f7f6] p-4"><p className="text-xs font-semibold text-[#075e61]">Acesso protegido</p><p className="mt-1 text-xs text-slate-500">Os dados exibidos seguem seu perfil.</p></div></aside><div className="md:pl-64"><header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white/90 px-4 backdrop-blur sm:px-8"><div><span className="text-xs text-slate-400">CMM Aviation</span><h1 className="text-sm font-semibold">{title}</h1></div><div className="flex items-center gap-3"><span className="hidden text-right sm:block"><strong className="block text-xs">{profile.display_name||'Colaborador'}</strong><small className="text-[10px] capitalize text-slate-500">{role} · {profile.base||'Acesso geral'}</small></span><Button variant="outline" size="sm" onClick={()=>void db.auth.signOut()}><LogOut className="mr-2 size-4"/>Sair</Button></div></header><nav className="flex gap-1 overflow-x-auto border-b bg-white px-3 py-2 md:hidden">{items.map(([key,label,Icon]:any)=><button key={key} onClick={()=>setPage(key)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${page===key?'bg-[#e8f4f2] text-[#075e61]':'text-slate-600'}`}><Icon className="size-4"/>{label}</button>)}</nav><main className="mx-auto max-w-6xl p-4 sm:p-8"><div className="mb-7 flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#168d88]">{role==='campo'?'Minha operação':role==='financeiro'?'Controle financeiro':'Painel de gestão'}</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h2><p className="mt-1 text-sm text-slate-500">{role==='campo'?'Seus atendimentos designados e indicadores do mês.':role==='financeiro'?'Recebíveis, repasses e ajustes financeiros.':'Acompanhamento da operação CMM Aviation.'}</p></div><Button variant="outline" size="sm" onClick={()=>void refresh()}><RefreshCw className={`mr-2 size-4 ${busy?'animate-spin':''}`}/>Atualizar</Button></div>{notice&&<p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{notice}</p>}
-  {(role==='gestor'||role==='financeiro')&&<GestorForms page={page} role={role} db={db} refresh={refresh} setNotice={setNotice}/>}
-  {role==='campo'&&page==='inicio'&&<div className="grid gap-4 sm:grid-cols-2"><Metric label="Concluídos no mês" value={summary?.completed_count??'—'}/><Metric label="Próximos atendimentos" value={summary?.upcoming_count??'—'}/><Metric label="Repasse acumulado" value={money(summary?.completed_cents)}/><Metric label="Projeção do mês" value={money(summary?.projected_cents)}/></div>}
-  {role==='gestor'&&page==='inicio'&&<div className="grid gap-4 sm:grid-cols-3"><Metric label="Agendamentos" value={summary?.bookings??'—'}/><Metric label="Clientes" value={summary?.clients??'—'}/><Metric label="Equipe" value={summary?.team??'—'}/></div>}
-  {role==='gestor'&&page==='equipe'&&<><form onSubmit={addMember} className="mb-5 grid gap-3 rounded-2xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-5"><label className="text-xs font-medium">Nome<Input required maxLength={120} value={name} onChange={e=>setName(e.target.value)} className="mt-2" placeholder="Nome do colaborador"/></label><label className="text-xs font-medium">Email de acesso<Input required type="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-2" placeholder="nome@empresa.com"/></label><label className="text-xs font-medium">Base<select value={base} onChange={e=>setBase(e.target.value)} className="mt-2 block h-10 w-full rounded-md border bg-white px-3"><option>GRU</option><option>VCP</option></select></label><label className="text-xs font-medium">Perfil<select value={newRole} onChange={e=>setNewRole(e.target.value)} className="mt-2 block h-10 w-full rounded-md border bg-white px-3"><option value="campo">Campo</option><option value="financeiro">Financeiro</option></select></label><Button type="submit" className="self-end">Criar acesso</Button></form>{accessLink&&<div className="mb-5 break-all rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm"><strong>Link inicial de senha</strong><p className="mt-1 text-xs text-slate-600">Compartilhe diretamente com o colaborador por um canal privado. O link é de uso único.</p><a className="mt-2 block text-[#075e61] underline" href={accessLink} target="_blank" rel="noreferrer">Abrir link de acesso</a></div>}</>}
-  {role==='financeiro'&&page==='financeiro'&&<div className="mb-5 grid gap-4 sm:grid-cols-3"><Metric label="Recebíveis em aberto" value={money(rows.filter(r=>r._kind==='Recebível'&&r.status==='pending').reduce((s,r)=>s+Number(r.amount_cents||0),0))}/><Metric label="Repasses pendentes" value={money(rows.filter(r=>r._kind==='Repasse'&&r.status==='pending').reduce((s,r)=>s+Number(r.amount_cents||0),0))}/><Metric label="Itens financeiros" value={rows.length}/></div>}
-  {role==='campo'&&page==='agenda'&&<div className="grid gap-3">{rows.map(r=>{const session=(r.booking_sessions as Row[]|undefined)?.[0];return <article key={String(r.id)} className="rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold text-[#168d88]">{String(r.code)} · {String(r.base)}</p><h3 className="mt-1 font-semibold">{String(r.service_summary)}</h3><p className="mt-1 text-sm text-slate-500">{date(r.scheduled_date)} · {String(r.scheduled_time).slice(0,5)}</p></div><div className="flex gap-2">{session&&!session.check_in_at&&<Button size="sm" onClick={()=>void action('check_in',{_session_id:session.id})}>Check-in</Button>}{session&&session.check_in_at&&!session.check_out_at&&<Button size="sm" onClick={()=>void action('check_out',{_session_id:session.id})}>Finalizar atendimento</Button>}<span className="rounded-full bg-slate-100 px-3 py-1 text-xs">{session?.check_out_at?'Concluído':session?.check_in_at?'Em andamento':'Designado'}</span></div></div></article>})}</div>}
-  {(page==='agenda'&&role==='gestor'||page==='clientes'||page==='equipe'&&role==='gestor'||page==='financeiro')&&<div className="overflow-hidden rounded-2xl border bg-white">{rows.length?rows.map((r,i)=><article key={String(r.id||i)} className="grid gap-2 border-b p-4 text-sm last:border-0 sm:grid-cols-[1fr_auto] sm:items-center"><div><strong>{String(r._kind||r.name||r.client_name||r.collaborator_name||r.service_summary||r.code||'Registro')}</strong><p className="mt-1 text-xs text-slate-500">{r._kind?String(r._kind)+' · ':''}{String(r.base||r.category||r.service_date||r.scheduled_date||r.reason||r.job_title||'')}{r.login_email?' · '+String(r.login_email):''}</p></div><div className="flex items-center gap-3"><strong>{typeof r.amount_cents==='number'?money(r.amount_cents):String(r.status||'')}</strong>{role==='financeiro'&&r.status==='pending'&&<Button size="sm" variant="outline" onClick={()=>void pay(String(r.id),String(r._kind))}>Registrar pago</Button>}</div></article>):<div className="p-10 text-center text-sm text-slate-500">{busy?'Carregando…':'Nenhum registro disponível para seu perfil.'}</div>}</div>}
-  {role==='campo'&&page==='inicio'&&<p className="mt-5 rounded-2xl border bg-white p-5 text-sm text-slate-600">Os totais consideram somente os atendimentos vinculados ao seu usuário e o mês atual.</p>}
-  <p className="mt-8 text-xs text-slate-400">CMM Aviation · Acesso individual auditável</p></main></div></div>;
+
+  return (
+    <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_1fr]">
+      <section className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
+        <div className="wordmark" style={{ margin: 0 }}><span>CMM</span><small>AVIATION</small></div>
+        <div className="max-w-md">
+          <div role="heading" aria-level={1} className="text-[34px] font-semibold leading-[1.2] tracking-tight text-sidebar-accent-foreground">Atendimento coordenado em cada operação.</div>
+          <div className="mt-5 text-[15px] leading-7 text-sidebar-foreground/75">Agenda, equipe e financeiro das bases de Guarulhos (GRU) e Viracopos (VCP) em um só lugar, com acesso de acordo com a função de cada pessoa.</div>
+        </div>
+        <div className="text-xs text-sidebar-foreground/55">Acesso restrito a colaboradores autorizados.</div>
+      </section>
+
+      <section className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-10 lg:hidden"><div className="wordmark" style={{ margin: 0 }}><span style={{ fontSize: 38 }}>CMM</span><small style={{ color: 'var(--foreground)' }}>AVIATION</small></div></div>
+          <h1 style={{ fontSize: 28, fontWeight: 650, lineHeight: 1.2, letterSpacing: '-0.01em' }}>Entrar no sistema</h1>
+          <div className="mt-2 text-sm text-muted-foreground">Use as credenciais fornecidas pela coordenação.</div>
+          <form onSubmit={submit} className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="login-email" className="mb-1.5 block text-[13px] font-medium">Email</label>
+              <Input id="login-email" required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 bg-white" placeholder="nome@empresa.com" />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="mb-1.5 block text-[13px] font-medium">Senha</label>
+              <Input id="login-password" required type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 bg-white" />
+            </div>
+            {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">{error}</div>}
+            <Button disabled={busy} className="h-11 w-full text-[15px]">{busy ? 'Validando acesso…' : 'Entrar'}</Button>
+          </form>
+          <div className="mt-8 border-t pt-6">
+            <div className="text-xs leading-5 text-muted-foreground">Ainda sem credenciais? A coordenação precisa cadastrar sua conta e atribuir um perfil antes do primeiro acesso.</div>
+            <Button variant="link" className="mt-2 h-auto p-0 text-xs text-muted-foreground" onClick={onDemo}>Explorar a demonstração com dados fictícios</Button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
-function Metric({label,value}:{label:string;value:unknown}) {return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">{label}</p><strong className="mt-3 block text-2xl font-semibold text-[#075e61]">{String(value)}</strong></article>}
+
+function PasswordSetup({ onDone }: { onDone: () => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (password.length < 12) {
+      setError('Use pelo menos 12 caracteres.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const { error: saveError } = await db.auth.updateUser({ password });
+    setBusy(false);
+    if (saveError) setError('Não foi possível definir a senha. Solicite um novo acesso à coordenação.');
+    else onDone();
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-background p-4">
+      <form onSubmit={submit} className="w-full max-w-md rounded-2xl border bg-white p-8 shadow-sm sm:p-10">
+        <h1 style={{ fontSize: 24, fontWeight: 650, lineHeight: 1.2 }}>Defina sua senha</h1>
+        <div className="mt-2 text-sm text-muted-foreground">Primeiro acesso ao CMM Aviation. Escolha uma senha com pelo menos 12 caracteres.</div>
+        <div className="mt-6">
+          <label htmlFor="new-password" className="mb-1.5 block text-[13px] font-medium">Nova senha</label>
+          <Input id="new-password" type="password" required minLength={12} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+        </div>
+        <div className="mt-4">
+          <label htmlFor="confirm-password" className="mb-1.5 block text-[13px] font-medium">Confirmar senha</label>
+          <Input id="confirm-password" type="password" required minLength={12} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-11" />
+        </div>
+        {error && <div role="alert" className="mt-4 text-sm text-rose-700">{error}</div>}
+        <Button disabled={busy} className="mt-6 h-11 w-full">{busy ? 'Salvando…' : 'Salvar senha e entrar'}</Button>
+      </form>
+    </main>
+  );
+}
+
+function AccessDenied({ error, onLogout }: { error: string; onLogout: () => void }) {
+  return (
+    <div className="grid min-h-screen place-items-center bg-background p-5">
+      <section className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
+        <ShieldCheck className="mx-auto size-10 text-warning" />
+        <div role="heading" aria-level={1} className="mt-4 text-xl font-semibold">Acesso ainda não configurado</div>
+        <div className="mt-2 text-sm text-muted-foreground">{error}</div>
+        <Button className="mt-6" variant="outline" onClick={onLogout}>Sair da conta</Button>
+      </section>
+    </div>
+  );
+}

@@ -1,21 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Mail, Phone, Plus, UsersRound } from 'lucide-react';
+import { Mail, Pencil, Phone, Plus, Trash2, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useBookings, useClients, useRpc } from './data';
 import { STATUS, bookingStatus, fmtDate, fmtTime, isEmail, maskPhone, type PageProps, type Row } from './lib';
-import { Avatar, DetailSheet, EmptyState, ErrorState, Field, FormSheet, ListSkeleton, NativeSelect, PageHeader, Panel, Pill, SearchBox, SectionTitle } from './ui';
+import { Avatar, ConfirmDialog, DetailSheet, EmptyState, ErrorState, Field, FormSheet, ListSkeleton, NativeSelect, PageHeader, Panel, Pill, SearchBox, SectionTitle } from './ui';
 
 const SUGGESTED = ['Aviação executiva', 'Operador de aeronaves', 'Fretamento', 'Companhia aérea', 'Empresa corporativa', 'Órgão governamental'];
 
 export function ClientesPage({ intent, clearIntent }: PageProps) {
+  const rpc = useRpc();
   const { data: clients = [], isLoading, error, refetch } = useClients();
   const { data: bookings = [] } = useBookings();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
   const [newOpen, setNewOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [delClient, setDelClient] = useState<Row | null>(null);
 
   useEffect(() => {
     if (intent === 'client') {
@@ -90,10 +93,15 @@ export function ClientesPage({ intent, clearIntent }: PageProps) {
         )}
       </Panel>
 
-      <NewClientSheet open={newOpen} onOpenChange={setNewOpen} categories={categories} />
+      <ClientSheet open={newOpen || !!editing} onOpenChange={(o) => { if (!o) { setNewOpen(false); setEditing(null); } }} categories={categories} editing={editing} />
       <DetailSheet open={!!current} onOpenChange={(o) => !o && setSelected(null)} title={current ? <span className="flex items-center gap-3"><Avatar name={current.name} size="lg" />{current.name}</span> : 'Cliente'} description={current?.category}>
         {current && (
           <>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(current)}><Pencil className="mr-2 size-3.5" />Editar cliente</Button>
+              <Button size="sm" variant="outline" className="text-rose-700 hover:text-rose-800" disabled={(counts.get(current.id) || 0) > 0} title={(counts.get(current.id) || 0) > 0 ? 'Cliente com atendimentos não pode ser excluído' : undefined} onClick={() => setDelClient(current)}><Trash2 className="mr-2 size-3.5" />Excluir</Button>
+            </div>
+            {(counts.get(current.id) || 0) > 0 && <div className="text-xs text-slate-500">Clientes com atendimentos não podem ser excluídos, pois o histórico financeiro depende deles.</div>}
             <section>
               <SectionTitle>Contato</SectionTitle>
               <dl className="space-y-2.5 rounded-lg border p-4 text-sm">
@@ -120,21 +128,34 @@ export function ClientesPage({ intent, clearIntent }: PageProps) {
           </>
         )}
       </DetailSheet>
+      <ConfirmDialog
+        open={!!delClient}
+        onOpenChange={(o) => !o && setDelClient(null)}
+        danger
+        title="Excluir cliente"
+        description={delClient ? `O cliente ${delClient.name} e seus contatos serão removidos definitivamente.` : ''}
+        confirmLabel="Excluir cliente"
+        onConfirm={async () => {
+          if (!delClient) return;
+          const ok = await rpc('delete_client', { _id: delClient.id }, 'Cliente excluído.', ['clients']);
+          if (ok) setSelected(null);
+        }}
+      />
     </>
   );
 }
 
-function NewClientSheet({ open, onOpenChange, categories }: { open: boolean; onOpenChange: (o: boolean) => void; categories: string[] }) {
+function ClientSheet({ open, onOpenChange, categories, editing }: { open: boolean; onOpenChange: (o: boolean) => void; categories: string[]; editing: Row | null }) {
   const rpc = useRpc();
   const [f, setF] = useState({ name: '', category: '', contact: '', email: '', phone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (open) {
-      setF({ name: '', category: '', contact: '', email: '', phone: '' });
+      setF(editing ? { name: String(editing.name), category: String(editing.category || ''), contact: String(editing.contact_name || ''), email: String(editing.email || ''), phone: String(editing.phone || '') } : { name: '', category: '', contact: '', email: '', phone: '' });
       setErrors({});
     }
-  }, [open]);
+  }, [open, editing]);
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
   const suggestions = Array.from(new Set([...SUGGESTED, ...categories]));
 
@@ -145,13 +166,16 @@ function NewClientSheet({ open, onOpenChange, categories }: { open: boolean; onO
     setErrors(e);
     if (Object.keys(e).length) return;
     setBusy(true);
-    const ok = await rpc('create_client', { _name: f.name.trim(), _category: f.category.trim() || 'Aviação executiva', _contact_name: f.contact.trim() || null, _email: f.email.trim() || null, _phone: f.phone.trim() || null }, 'Cliente cadastrado.', ['clients']);
+    const args = { _name: f.name.trim(), _category: f.category.trim() || 'Aviação executiva', _contact_name: f.contact.trim() || null, _email: f.email.trim() || null, _phone: f.phone.trim() || null };
+    const ok = editing
+      ? await rpc('update_client', { _id: editing.id, ...args }, 'Cliente atualizado.', ['clients', 'bookings', 'finance'])
+      : await rpc('create_client', args, 'Cliente cadastrado.', ['clients']);
     setBusy(false);
     if (ok) onOpenChange(false);
   }
 
   return (
-    <FormSheet open={open} onOpenChange={onOpenChange} title="Novo cliente" description="Cadastre a empresa e o contato principal para os agendamentos." onSubmit={() => void submit()} submitLabel="Cadastrar cliente" busy={busy}>
+    <FormSheet open={open} onOpenChange={onOpenChange} title={editing ? 'Editar cliente' : 'Novo cliente'} description={editing ? 'As alterações de nome também são refletidas nos agendamentos e recebíveis deste cliente.' : 'Cadastre a empresa e o contato principal para os agendamentos.'} onSubmit={() => void submit()} submitLabel={editing ? 'Salvar alterações' : 'Cadastrar cliente'} busy={busy}>
       <Field label="Nome do cliente" id="c-name" required error={errors.name}><Input id="c-name" maxLength={120} value={f.name} onChange={(e) => set('name', e.target.value)} autoFocus /></Field>
       <Field label="Categoria" id="c-cat" error={errors.category} hint="Se deixar em branco, será usada Aviação executiva.">
         <Input id="c-cat" list="c-cat-list" maxLength={80} value={f.category} onChange={(e) => set('category', e.target.value)} />

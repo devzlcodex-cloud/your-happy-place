@@ -61,10 +61,20 @@ export const useBookingExtra = (id: string | null, withPrices: boolean) =>
       const [o, s] = await Promise.all([
         db.from('booking_observations').select('id,body,author_name,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
         withPrices
-          ? db.from('booking_services').select('id,service_name,price_cents').eq('booking_id', id)
+          ? db.from('booking_services').select('id,service_id,service_name,price_cents').eq('booking_id', id)
           : Promise.resolve({ data: [], error: null }),
       ]);
       return { observations: rows(o), services: rows(s) };
+    },
+  });
+
+export const useBookingEvents = (id: string | null) =>
+  useQuery({
+    queryKey: ['booking-events', id],
+    enabled: !!id,
+    queryFn: async (): Promise<Row[]> => {
+      const { data, error } = await db.from('booking_events').select('id,scope,kind,message,actor_name,created_at').eq('booking_id', id).order('created_at', { ascending: false });
+      return error ? [] : data || [];
     },
   });
 
@@ -106,7 +116,7 @@ export const useFinance = (enabled = true) =>
       const [r, p, a] = await Promise.all([
         db.from('receivables').select('id,booking_code,client_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
         db.from('payouts').select('id,booking_code,team_member_id,collaborator_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
-        db.from('financial_adjustments').select('id,collaborator_name,amount_cents,reason,author_name,created_at').order('created_at', { ascending: false }),
+        db.from('financial_adjustments').select('id,team_member_id,collaborator_name,amount_cents,reason,author_name,created_at').order('created_at', { ascending: false }),
       ]);
       return { receivables: rows(r), payouts: rows(p), adjustments: rows(a) };
     },

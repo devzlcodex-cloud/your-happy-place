@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useBookingExtra, useBookings, useClients, useRpc, useServices, useTeam } from './data';
 import { BASES, STATUS, bookingStatus, dayParts, downloadCsv, fmtDate, fmtDateTime, fmtTime, money, todayIso, type Booking, type BookingStatus, type PageProps, type Row } from './lib';
+import { EventTimeline, EvidenceSection, FlightBadge, FlightSection } from './ops-extras';
 import { Avatar, DetailSheet, EmptyState, ErrorState, Field, FormSheet, ListSkeleton, NativeSelect, Panel, PageHeader, Pill, SearchBox, SectionTitle, Segmented } from './ui';
 
 type Period = 'today' | 'week' | 'month' | 'all';
@@ -129,6 +130,7 @@ export function AgendaPage({ profile, intent, clearIntent }: PageProps) {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-slate-900">{b.client_name}</span>
                       <span className="block truncate text-xs text-slate-500">{b.service_summary}</span>
+                      {b.flight && <span className="mt-0.5 block"><FlightBadge flight={b.flight} /></span>}
                     </span>
                     <span className="hidden items-center sm:flex">
                       {b.sessions.length ? (
@@ -230,6 +232,9 @@ function BookingDetail({ id, booking, isGestor, onClose }: { id: string | null; 
             </section>
           )}
 
+          <FlightSection booking={booking} />
+          <EvidenceSection bookingId={booking.id} />
+
           <section>
             <SectionTitle>Observações</SectionTitle>
             <div className="flex gap-2">
@@ -246,6 +251,7 @@ function BookingDetail({ id, booking, isGestor, onClose }: { id: string | null; 
               {!isLoading && !(data?.observations || []).length && <li className="text-sm text-slate-500">Nenhuma observação registrada.</li>}
             </ul>
           </section>
+          <EventTimeline bookingId={booking.id} />
         </>
       )}
     </DetailSheet>

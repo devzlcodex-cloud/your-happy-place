@@ -40,16 +40,19 @@ export const useBookings = () =>
     queryKey: ['bookings'],
     refetchInterval: 60_000,
     queryFn: async (): Promise<Booking[]> => {
-      const [b, s, d] = await Promise.all([
+      const [b, s, d, f] = await Promise.all([
         db.from('bookings').select('id,code,client_id,client_name,base,scheduled_date,scheduled_time,service_summary,created_at').order('scheduled_date').order('scheduled_time'),
         db.from('booking_sessions').select('id,booking_id,team_member_id,collaborator_name,is_lead,check_in_at,check_out_at'),
         db.from('booking_details').select('booking_id,aircraft,note,accessibility'),
+        db.from('booking_flights').select('booking_id,flight_number,airline,terminal,gate,flight_status,eta,updated_at,updated_by_name'),
       ]);
+      const flights = new Map<string, Row>();
+      rows(f).forEach((x) => flights.set(x.booking_id, x));
       const sessions = new Map<string, Row[]>();
       rows(s).forEach((x) => sessions.set(x.booking_id, [...(sessions.get(x.booking_id) || []), x]));
       const details = new Map<string, Row>();
       rows(d).forEach((x) => details.set(x.booking_id, x));
-      return rows(b).map((x) => ({ ...x, sessions: sessions.get(x.id) || [], details: details.get(x.id) || null }));
+      return rows(b).map((x) => ({ ...x, sessions: sessions.get(x.id) || [], details: details.get(x.id) || null, flight: flights.get(x.id) || null }));
     },
   });
 
@@ -104,8 +107,8 @@ export const useFinance = (enabled = true) =>
     enabled,
     queryFn: async () => {
       const [r, p, a] = await Promise.all([
-        db.from('receivables').select('id,booking_code,client_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
-        db.from('payouts').select('id,booking_code,team_member_id,collaborator_name,service_date,amount_cents,status,paid_at,paid_by_name').order('service_date', { ascending: false }),
+        db.from('receivables').select('id,booking_code,client_name,service_date,amount_cents,status,paid_at,paid_by_name,payment_method,payment_reference').order('service_date', { ascending: false }),
+        db.from('payouts').select('id,booking_code,team_member_id,collaborator_name,service_date,amount_cents,status,paid_at,paid_by_name,payment_method,payment_reference').order('service_date', { ascending: false }),
         db.from('financial_adjustments').select('id,collaborator_name,amount_cents,reason,author_name,created_at').order('created_at', { ascending: false }),
       ]);
       return { receivables: rows(r), payouts: rows(p), adjustments: rows(a) };

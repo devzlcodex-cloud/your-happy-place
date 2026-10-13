@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useBookings, useMonthSummary, useRpc } from './data';
+import { useBookings, useMonthSummary } from './data';
+import { EvidenceSection, FlightBadge, FlightSection, OfflineSync, useFieldAction } from './ops-extras';
 import { STATUS, bookingStatus, dayParts, fmtDateTime, fmtTime, money, type Booking, type PageProps, type Row } from './lib';
 import { Avatar, ConfirmDialog, EmptyState, ErrorState, Kpi, ListSkeleton, PageHeader, Pill, SectionTitle } from './ui';
 
 export function CampoPage({ profile }: PageProps) {
-  const rpc = useRpc();
+  const act = useFieldAction();
+  const [openId, setOpenId] = useState<string | null>(null);
   const { data: bookings = [], isLoading, error, refetch } = useBookings();
   const { data: summary } = useMonthSummary(profile);
   const [finish, setFinish] = useState<{ sessionId: string; label: string } | null>(null);
@@ -26,7 +28,7 @@ export function CampoPage({ profile }: PageProps) {
 
   async function checkIn(sessionId: string) {
     setBusyId(sessionId);
-    await rpc('check_in', { _session_id: sessionId }, 'Check-in registrado.', ['bookings', 'month-summary']);
+    await act('check_in', { _session_id: sessionId }, 'Check-in registrado.', 'Check-in');
     setBusyId(null);
   }
 
@@ -44,6 +46,7 @@ export function CampoPage({ profile }: PageProps) {
         </div>
         <div role="heading" aria-level={3} className="mt-3 text-[15px] font-semibold text-slate-900">{b.client_name}</div>
         <div className="text-sm text-slate-600">{b.service_summary}</div>
+        {b.flight && <div className="mt-2"><FlightBadge flight={b.flight} /></div>}
         {b.details && (b.details.aircraft || b.details.accessibility || b.details.note) && (
           <dl className="mt-3 space-y-1.5 rounded-lg bg-slate-50 p-3 text-sm">
             {b.details.aircraft && <div className="flex gap-2"><dt className="w-28 shrink-0 text-slate-500">Aeronave</dt><dd className="font-medium">{b.details.aircraft}</dd></div>}
@@ -55,6 +58,10 @@ export function CampoPage({ profile }: PageProps) {
           <div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><span className="flex -space-x-2">{mates.map((s: Row) => <Avatar key={s.id} name={s.collaborator_name} size="sm" ring />)}</span>Com {mates.map((s: Row) => s.collaborator_name).join(', ')}</div>
         )}
         {own?.check_in_at && <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500"><Clock className="size-3" />Entrada {fmtDateTime(own.check_in_at)}{own.check_out_at ? ` • Saída ${fmtDateTime(own.check_out_at)}` : ''}</div>}
+        {own && !own.check_out_at && (
+          <Button variant="ghost" className="mt-3 h-10 w-full" onClick={() => setOpenId(openId === b.id ? null : b.id)}>{openId === b.id ? 'Ocultar voo e evidências' : 'Voo, portão e evidências'}</Button>
+        )}
+        {openId === b.id && <div className="mt-3 space-y-5 border-t pt-4"><FlightSection booking={b} /><EvidenceSection bookingId={b.id} /></div>}
         {own && !own.check_in_at && <Button className="mt-4 h-12 w-full text-base" disabled={busyId === own.id} onClick={() => void checkIn(own.id)}>{busyId === own.id ? 'Registrando…' : 'Registrar check-in'}</Button>}
         {own && own.check_in_at && !own.check_out_at && <Button className="mt-4 h-12 w-full text-base" variant="outline" onClick={() => setFinish({ sessionId: own.id, label: `${b.client_name} (${b.code})` })}>Finalizar atendimento</Button>}
       </article>
@@ -64,6 +71,7 @@ export function CampoPage({ profile }: PageProps) {
   return (
     <>
       <PageHeader title="Meus atendimentos" description="Seus atendimentos designados. Registre a entrada ao iniciar e a saída ao concluir." />
+      <OfflineSync />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Concluídos no mês" value={summary?.completed_count ?? '—'} />
         <Kpi label="Próximos atendimentos" value={summary?.upcoming_count ?? '—'} />
@@ -86,7 +94,7 @@ export function CampoPage({ profile }: PageProps) {
         description={finish ? `Registrar a saída do atendimento ${finish.label}? O horário fica gravado e gera o repasse correspondente.` : ''}
         confirmLabel="Registrar saída"
         onConfirm={async () => {
-          if (finish) await rpc('check_out', { _session_id: finish.sessionId }, 'Atendimento finalizado.', ['bookings', 'month-summary']);
+          if (finish) await act('check_out', { _session_id: finish.sessionId }, 'Atendimento finalizado.', `Checkout ${finish.label}`);
         }}
       />
     </>

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { db } from './data';
 import { ROLE_LABEL, type PageKey, type Profile } from './lib';
 import { Avatar } from './ui';
+import { NotificationsBell } from './ops-extras';
 import { InicioPage } from './page-inicio';
 import { AgendaPage } from './page-agenda';
 import { ClientesPage } from './page-clientes';
@@ -165,6 +166,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
                 <Search className="size-4" />Buscar ou criar<kbd className="ml-6 rounded border bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-500">Ctrl K</kbd>
               </button>
             )}
+            <NotificationsBell />
             <span className="hidden text-right text-xs leading-tight text-slate-500 lg:block"><span className="block font-semibold tabular-nums text-slate-800">{format(now, 'HH:mm')}</span>{format(now, "dd 'de' MMM", { locale: ptBR })}</span>
             <button type="button" aria-label="Sair da conta" onClick={() => void db.auth.signOut()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden"><LogOut className="size-5" /></button>
           </div>

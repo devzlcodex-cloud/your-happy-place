@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useFinance, useRpc, useTeam } from './data';
 import { SettleDialog, printReport } from './ops-extras';
 import { downloadCsv, fmtDate, fmtDateTime, money, todayIso, type PageProps, type Row } from './lib';
-import { ConfirmDialog, EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
+import { EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
 
 type Tab = 'receivables' | 'payouts' | 'adjustments';
 type Filter = 'all' | 'pending' | 'paid';

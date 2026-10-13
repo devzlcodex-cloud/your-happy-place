@@ -31,17 +31,17 @@ const GESTOR_NAV: NavItem[] = [
 ];
 
 class PageBoundary extends Component<{ children: ReactNode; resetKey: string }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidUpdate(prev: { resetKey: string }) {
+  override componentDidUpdate(prev: { resetKey: string }) {
     if (prev.resetKey !== this.props.resetKey && this.state.failed) this.setState({ failed: false });
   }
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     console.error(error);
   }
-  render() {
+  override render() {
     if (!this.state.failed) return this.props.children;
     return (
       <div className="mx-auto max-w-md py-24 text-center">
@@ -80,7 +80,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
     } catch {
       /* armazenamento indisponível */
     }
-    return nav[0].key;
+    return nav[0]!.key;
   });
   const [intent, setIntent] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
@@ -113,7 +113,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
   }, []);
 
   const groups = Array.from(new Set(nav.map((n) => n.group)));
-  const current = nav.find((n) => n.key === page) || nav[0];
+  const current = nav.find((n) => n.key === page) || nav[0]!;
   const props = { profile, intent, clearIntent: () => setIntent(null), go };
 
   const navButton = (item: NavItem) => (

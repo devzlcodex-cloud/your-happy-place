@@ -82,7 +82,7 @@ export const useClients = (enabled = true) =>
       ]);
       const contacts = new Map<string, Row>();
       rows(k).forEach((x) => contacts.set(x.client_id, x));
-      return rows(c).map((x) => ({ ...x, contact_name: contacts.get(x.id)?.contact_name || null, email: contacts.get(x.id)?.email || null, phone: contacts.get(x.id)?.phone || null }));
+      return rows(c).map((x): Row => ({ ...x, contact_name: contacts.get(x.id)?.contact_name || null, email: contacts.get(x.id)?.email || null, phone: contacts.get(x.id)?.phone || null }));
     },
   });
 

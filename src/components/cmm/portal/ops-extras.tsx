@@ -11,19 +11,22 @@ import { fmtDate, fmtDateTime, money, type Booking, type Row } from './lib';
 import { Field, NativeSelect, Pill, SectionTitle } from './ui';
 
 /* ---------- Flight ---------- */
-export const FLIGHT_STATUS: Record<string, { label: string; tone: 'neutral' | 'info' | 'success' | 'warn' | 'danger' }> = {
-  previsto: { label: 'Previsto', tone: 'neutral' },
+type FS = { label: string; tone: 'neutral' | 'info' | 'success' | 'warn' | 'danger' };
+const FLIGHT_DEFAULT: FS = { label: 'Previsto', tone: 'neutral' };
+export const FLIGHT_STATUS: Record<string, FS> = {
+  previsto: FLIGHT_DEFAULT,
   no_horario: { label: 'No horário', tone: 'success' },
   atrasado: { label: 'Atrasado', tone: 'warn' },
   pousou: { label: 'Pousou', tone: 'info' },
   decolou: { label: 'Decolou', tone: 'info' },
   cancelado: { label: 'Cancelado', tone: 'danger' },
 };
+export const flightStatus = (k: unknown): FS => FLIGHT_STATUS[String(k)] ?? FLIGHT_DEFAULT;
 export const TERMINALS: Record<string, string[]> = { GRU: ['Terminal 1', 'Terminal 2', 'Terminal 3', 'Aviação geral'], VCP: ['Terminal 1', 'Aviação geral'] };
 
 export function FlightBadge({ flight }: { flight?: Row | null }) {
   if (!flight) return null;
-  const st = FLIGHT_STATUS[flight.flight_status] || FLIGHT_STATUS.previsto;
+  const st = flightStatus(flight['flight_status']);
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
       <Plane className="size-3" />
@@ -47,7 +50,7 @@ export function FlightSection({ booking }: { booking: Booking }) {
     setBusy(true);
     const { error } = await db.rpc('set_flight_info', { _booking_id: booking.id, _flight: f.flight, _airline: f.airline, _terminal: f.terminal, _gate: f.gate, _status: f.status, _eta: f.eta || null });
     setBusy(false);
-    if (error) return toast.error(friendlyError(error.message));
+    if (error) { toast.error(friendlyError(error.message)); return; }
     toast.success('Dados do voo atualizados.');
     setEdit(false);
     await Promise.all([qc.invalidateQueries({ queryKey: ['bookings'] }), qc.invalidateQueries({ queryKey: ['events'] })]);
@@ -82,7 +85,7 @@ export function FlightSection({ booking }: { booking: Booking }) {
         <dl className="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-3">
           <div><dt className="text-xs text-slate-500">Voo</dt><dd className="mt-0.5 font-medium">{fl.flight_number || '—'}{fl.airline ? ` · ${fl.airline}` : ''}</dd></div>
           <div><dt className="text-xs text-slate-500">Terminal / portão</dt><dd className="mt-0.5 font-medium">{fl.terminal || '—'}{fl.gate ? ` · ${fl.gate}` : ''}</dd></div>
-          <div><dt className="text-xs text-slate-500">Status</dt><dd className="mt-0.5"><Pill tone={(FLIGHT_STATUS[fl.flight_status] || FLIGHT_STATUS.previsto).tone} dot>{(FLIGHT_STATUS[fl.flight_status] || FLIGHT_STATUS.previsto).label}</Pill>{fl.eta && <span className="ml-2 text-xs text-slate-500">ETA {String(fl.eta).slice(0, 5)}</span>}</dd></div>
+          <div><dt className="text-xs text-slate-500">Status</dt><dd className="mt-0.5"><Pill tone={flightStatus(fl['flight_status']).tone} dot>{flightStatus(fl['flight_status']).label}</Pill>{fl.eta && <span className="ml-2 text-xs text-slate-500">ETA {String(fl.eta).slice(0, 5)}</span>}</dd></div>
           {fl.updated_by_name && <div className="text-xs text-slate-500 sm:col-span-3">Atualizado por {fl.updated_by_name} em {fmtDateTime(fl.updated_at)}</div>}
         </dl>
       ) : <div className="text-sm text-slate-500">Nenhum voo informado.</div>}
@@ -107,16 +110,16 @@ export function EvidenceSection({ bookingId }: { bookingId: string }) {
   });
 
   async function upload(file: File) {
-    if (!file.type.startsWith('image/')) return toast.error('Envie uma imagem (foto do comprovante ou etiqueta).');
-    if (file.size > 10 * 1024 * 1024) return toast.error('A imagem deve ter até 10 MB.');
+    if (!file.type.startsWith('image/')) return void toast.error('Envie uma imagem (foto do comprovante ou etiqueta).');
+    if (file.size > 10 * 1024 * 1024) return void toast.error('A imagem deve ter até 10 MB.');
     setBusy(true);
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
     const path = `${bookingId}/${crypto.randomUUID()}.${ext}`;
     const up = await db.storage.from('evidencias').upload(path, file, { contentType: file.type });
-    if (up.error) { setBusy(false); return toast.error(friendlyError(up.error.message)); }
+    if (up.error) { setBusy(false); toast.error(friendlyError(up.error.message)); return; }
     const { error } = await db.rpc('add_evidence', { _booking_id: bookingId, _path: path, _caption: null });
     setBusy(false);
-    if (error) return toast.error(friendlyError(error.message));
+    if (error) { toast.error(friendlyError(error.message)); return; }
     toast.success('Evidência anexada.');
     await Promise.all([qc.invalidateQueries({ queryKey: ['evidence', bookingId] }), qc.invalidateQueries({ queryKey: ['events'] })]);
   }
@@ -314,7 +317,7 @@ export function SettleDialog({ open, label, title, onOpenChange, onConfirm }: { 
 export function printReport(title: string, head: string[], rows: (string | number)[][], totalCents: number) {
   const esc = (v: unknown) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
   const w = window.open('', '_blank', 'width=900,height=700');
-  if (!w) return toast.error('Permita janelas pop-up para gerar o PDF.');
+  if (!w) { toast.error('Permita janelas pop-up para gerar o PDF.'); return; }
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
     body{font-family:Manrope,system-ui,sans-serif;color:#143B40;margin:32px}h1{font-size:20px;margin:0}small{color:#64748b}
     .brand{font-weight:800;letter-spacing:.04em}.brand b{color:#0e9fb0}table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}

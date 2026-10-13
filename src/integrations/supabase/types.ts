@@ -765,6 +765,23 @@ export type Database = {
         }
         Returns: string
       }
+      delete_adjustment: { Args: { _id: string }; Returns: undefined }
+      delete_booking: { Args: { _id: string }; Returns: undefined }
+      delete_client: { Args: { _id: string }; Returns: undefined }
+      delete_service: { Args: { _id: string }; Returns: undefined }
+      delete_team_member: { Args: { _id: string }; Returns: undefined }
+      gestor_check_in: {
+        Args: { _at?: string; _session_id: string }
+        Returns: undefined
+      }
+      gestor_check_out: {
+        Args: { _at?: string; _session_id: string }
+        Returns: undefined
+      }
+      gestor_undo_check_in: {
+        Args: { _session_id: string }
+        Returns: undefined
+      }
       get_my_profile: {
         Args: never
         Returns: {
@@ -795,6 +812,8 @@ export type Database = {
           upcoming_count: number
         }[]
       }
+      reopen_payout: { Args: { _id: string }; Returns: undefined }
+      reopen_receivable: { Args: { _id: string }; Returns: undefined }
       set_flight_info: {
         Args: {
           _airline: string
@@ -807,12 +826,66 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_member_active: {
+        Args: { _active: boolean; _id: string }
+        Returns: undefined
+      }
       settle_payout: {
         Args: { _id: string; _method: string; _reference?: string }
         Returns: undefined
       }
       settle_receivable: {
         Args: { _id: string; _method: string; _reference?: string }
+        Returns: undefined
+      }
+      update_adjustment: {
+        Args: { _amount_cents: number; _id: string; _reason: string }
+        Returns: undefined
+      }
+      update_booking: {
+        Args: {
+          _accessibility?: string
+          _aircraft?: string
+          _base: Database["public"]["Enums"]["base_code"]
+          _date: string
+          _id: string
+          _lead_id: string
+          _note?: string
+          _service_ids: string[]
+          _support_id?: string
+          _time: string
+        }
+        Returns: undefined
+      }
+      update_client: {
+        Args: {
+          _category: string
+          _contact_name?: string
+          _email?: string
+          _id: string
+          _name: string
+          _phone?: string
+        }
+        Returns: undefined
+      }
+      update_service: {
+        Args: {
+          _active: boolean
+          _id: string
+          _name: string
+          _price_cents: number
+        }
+        Returns: undefined
+      }
+      update_team_member: {
+        Args: {
+          _accessible: boolean
+          _base: Database["public"]["Enums"]["base_code"]
+          _id: string
+          _job_title: string
+          _languages: string[]
+          _name: string
+        }
         Returns: undefined
       }
       upsert_service: {

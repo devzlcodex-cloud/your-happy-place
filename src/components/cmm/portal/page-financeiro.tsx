@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { useFinance, useRpc, useTeam } from './data';
+import { SettleDialog, printReport } from './ops-extras';
 import { downloadCsv, fmtDate, fmtDateTime, money, todayIso, type PageProps, type Row } from './lib';
-import { ConfirmDialog, EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
+import { EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
 
 type Tab = 'receivables' | 'payouts' | 'adjustments';
 type Filter = 'all' | 'pending' | 'paid';
@@ -53,11 +54,11 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
   const allSelected = selectable.length > 0 && selectable.every((r) => selected.includes(r.id));
   const selectedTotal = sum(rows.filter((r) => selected.includes(r.id)));
 
-  async function settle(ids: string[]) {
-    const fn = tab === 'receivables' ? 'mark_receivable_paid' : 'mark_payout_paid';
+  async function settle(ids: string[], method: string, reference: string) {
+    const fn = tab === 'receivables' ? 'settle_receivable' : 'settle_payout';
     let failed = 0;
     for (const id of ids) {
-      const ok = await rpc(fn, { _id: id }, '', [], true);
+      const ok = await rpc(fn, { _id: id, _method: method, _reference: reference }, '', ['events'], true);
       if (!ok) failed += 1;
     }
     await qc.invalidateQueries({ queryKey: ['finance'] });
@@ -72,9 +73,22 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
       return;
     }
     downloadCsv(`${tab === 'receivables' ? 'recebiveis' : 'repasses'}-${todayIso()}.csv`, [
-      ['Código', tab === 'receivables' ? 'Cliente' : 'Colaborador', 'Data do serviço', 'Valor', 'Status', 'Pago em'],
-      ...rows.map((r) => [r.booking_code, r.client_name || r.collaborator_name, fmtDate(r.service_date), (r.amount_cents / 100).toFixed(2).replace('.', ','), r.status === 'paid' ? 'Pago' : 'Pendente', r.paid_at ? fmtDateTime(r.paid_at) : '']),
+      ['Código', tab === 'receivables' ? 'Cliente' : 'Colaborador', 'Data do serviço', 'Valor', 'Status', 'Pago em', 'Forma', 'Transação'],
+      ...rows.map((r) => [r.booking_code, r.client_name || r.collaborator_name, fmtDate(r.service_date), (r.amount_cents / 100).toFixed(2).replace('.', ','), r.status === 'paid' ? 'Pago' : 'Pendente', r.paid_at ? fmtDateTime(r.paid_at) : '', r.payment_method || '', r.payment_reference || '']),
     ]);
+  }
+
+  function exportPdf() {
+    if (tab === 'adjustments') {
+      printReport('Ajustes financeiros', ['Colaborador', 'Motivo', 'Registrado por', 'Valor'], rows.map((r) => [r.collaborator_name, r.reason, r.author_name, money(r.amount_cents)]), sum(rows));
+      return;
+    }
+    printReport(
+      tab === 'receivables' ? 'Fechamento de recebíveis' : 'Fechamento de repasses',
+      ['Código', tab === 'receivables' ? 'Cliente' : 'Colaborador', 'Data', 'Situação', 'Pagamento', 'Valor'],
+      rows.map((r) => [r.booking_code, r.client_name || r.collaborator_name, fmtDate(r.service_date), r.status === 'paid' ? 'Pago' : 'Pendente', r.payment_method ? `${r.payment_method}${r.payment_reference ? ` ${r.payment_reference}` : ''}` : '—', money(r.amount_cents)]),
+      sum(rows),
+    );
   }
 
   return (
@@ -84,7 +98,8 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
         description="Recebíveis de clientes, repasses a colaboradores e ajustes, com baixa individual ou em lote."
         actions={
           <>
-            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}><Download className="mr-2 size-4" />Exportar</Button>
+            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}><Download className="mr-2 size-4" />Planilha</Button>
+            <Button variant="outline" onClick={exportPdf} disabled={!rows.length}><Download className="mr-2 size-4" />PDF</Button>
             <Button onClick={() => setAdjOpen(true)}><Plus className="mr-2 size-4" />Novo ajuste</Button>
           </>
         }
@@ -152,7 +167,7 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
                   <TableCell className="hidden text-slate-600 md:table-cell">{fmtDate(r.service_date)}</TableCell>
                   <TableCell className="text-right font-medium tabular-nums">{money(r.amount_cents)}</TableCell>
                   <TableCell>
-                    {r.status === 'paid' ? <span><Pill tone="success" dot>Pago</Pill><span className="mt-1 block text-xs text-slate-500">{fmtDateTime(r.paid_at)}</span></span> : <Pill tone="warn" dot>Pendente</Pill>}
+                    {r.status === 'paid' ? <span><Pill tone="success" dot>Pago</Pill><span className="mt-1 block text-xs text-slate-500">{fmtDateTime(r.paid_at)}{r.payment_method ? ` · ${r.payment_method}` : ''}{r.payment_reference ? ` ${r.payment_reference}` : ''}</span></span> : <Pill tone="warn" dot>Pendente</Pill>}
                   </TableCell>
                   <TableCell className="pr-4 text-right">{r.status === 'pending' && <Button size="sm" variant="outline" onClick={() => setConfirm({ ids: [r.id], label: r.booking_code })}>Dar baixa</Button>}</TableCell>
                 </TableRow>
@@ -169,13 +184,12 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
         )}
       </Panel>
 
-      <ConfirmDialog
+      <SettleDialog
         open={!!confirm}
         onOpenChange={(o) => !o && setConfirm(null)}
         title={tab === 'receivables' ? 'Confirmar recebimento' : 'Confirmar pagamento do repasse'}
-        description={confirm ? `Registrar a baixa de ${confirm.label}? A data e o seu usuário ficam gravados e a ação não pode ser desfeita por aqui.` : ''}
-        confirmLabel="Registrar baixa"
-        onConfirm={() => (confirm ? settle(confirm.ids) : undefined)}
+        label={confirm?.label || ''}
+        onConfirm={async (m, ref) => { if (confirm) await settle(confirm.ids, m, ref); }}
       />
       <AdjustmentSheet open={adjOpen} onOpenChange={setAdjOpen} isGestor={isGestor} payouts={payouts} />
     </>

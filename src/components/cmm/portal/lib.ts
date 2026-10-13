@@ -20,7 +20,6 @@ export const fmtTime = (t?: string | null) => (t ? String(t).slice(0, 5) : '—'
 export const fmtDate = (v?: string | null) => (v ? format(parseISO(v), 'dd/MM/yyyy') : '—');
 export const fmtDateTime = (v?: string | null) => (v ? format(parseISO(v), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—');
 export const todayIso = () => format(new Date(), 'yyyy-MM-dd');
-export const nowLocalInput = () => format(new Date(), "yyyy-MM-dd'T'HH:mm");
 
 export function dayParts(iso: string) {
   const d = parseISO(iso);

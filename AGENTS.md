@@ -15,3 +15,5 @@
 - Demo storage is versioned, validated and hydrated after mount; preserve SSR consistency and never write seeds before hydration.
 - Use separate TanStack leaf routes for each operational screen, with shared navigation in the root outlet wrapper.
 - Keep all amounts in integer BRL cents and store applied service prices on each booking to prevent catalog changes altering historical charges.
+- Operational side-effects (event trail, settlement details, flight data, evidence) are written only through SECURITY DEFINER RPCs and triggers; the browser never inserts into these tables directly, so permissions live in the database.
+- Field check-in/checkout use a localStorage retry queue when offline; the server timestamps the action on delivery, so queued actions record sync time rather than tap time.

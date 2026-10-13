@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { db } from './data';
 import { ROLE_LABEL, type PageKey, type Profile } from './lib';
 import { Avatar } from './ui';
+import { NotificationsBell } from './ops-extras';
 import { InicioPage } from './page-inicio';
 import { AgendaPage } from './page-agenda';
 import { ClientesPage } from './page-clientes';
@@ -30,17 +31,17 @@ const GESTOR_NAV: NavItem[] = [
 ];
 
 class PageBoundary extends Component<{ children: ReactNode; resetKey: string }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidUpdate(prev: { resetKey: string }) {
+  override componentDidUpdate(prev: { resetKey: string }) {
     if (prev.resetKey !== this.props.resetKey && this.state.failed) this.setState({ failed: false });
   }
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     console.error(error);
   }
-  render() {
+  override render() {
     if (!this.state.failed) return this.props.children;
     return (
       <div className="mx-auto max-w-md py-24 text-center">
@@ -79,7 +80,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
     } catch {
       /* armazenamento indisponível */
     }
-    return nav[0].key;
+    return nav[0]!.key;
   });
   const [intent, setIntent] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
@@ -112,7 +113,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
   }, []);
 
   const groups = Array.from(new Set(nav.map((n) => n.group)));
-  const current = nav.find((n) => n.key === page) || nav[0];
+  const current = nav.find((n) => n.key === page) || nav[0]!;
   const props = { profile, intent, clearIntent: () => setIntent(null), go };
 
   const navButton = (item: NavItem) => (
@@ -165,6 +166,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
                 <Search className="size-4" />Buscar ou criar<kbd className="ml-6 rounded border bg-slate-50 px-1.5 py-0.5 text-[11px] text-slate-500">Ctrl K</kbd>
               </button>
             )}
+            <NotificationsBell />
             <span className="hidden text-right text-xs leading-tight text-slate-500 lg:block"><span className="block font-semibold tabular-nums text-slate-800">{format(now, 'HH:mm')}</span>{format(now, "dd 'de' MMM", { locale: ptBR })}</span>
             <button type="button" aria-label="Sair da conta" onClick={() => void db.auth.signOut()} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 md:hidden"><LogOut className="size-5" /></button>
           </div>

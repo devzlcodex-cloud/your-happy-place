@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useFinance, useRpc, useTeam } from './data';
 import { SettleDialog, printReport } from './ops-extras';
 import { downloadCsv, fmtDate, fmtDateTime, money, todayIso, type PageProps, type Row } from './lib';
-import { EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
+import { ConfirmDialog, EmptyState, ErrorState, Field, FormSheet, Kpi, ListSkeleton, MoneyInput, NativeSelect, PageHeader, Panel, Pill, SearchBox, Segmented } from './ui';
 
 type Tab = 'receivables' | 'payouts' | 'adjustments';
 type Filter = 'all' | 'pending' | 'paid';
@@ -25,6 +25,8 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<{ ids: string[]; label: string } | null>(null);
   const [adjOpen, setAdjOpen] = useState(false);
+  const [adjEdit, setAdjEdit] = useState<Row | null>(null);
+  const [act, setAct] = useState<{ title: string; description: string; label: string; danger?: boolean; run: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (intent === 'adjustment') {
@@ -133,14 +135,15 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
           <EmptyState icon={Wallet} title={tab === 'adjustments' ? 'Nenhum ajuste lançado' : filter === 'pending' ? 'Nada pendente por aqui' : 'Nenhum lançamento encontrado'} description={tab === 'adjustments' ? 'Acréscimos e descontos aplicados a colaboradores aparecem nesta lista.' : 'Recebíveis e repasses são gerados automaticamente quando o atendimento é concluído com check-out.'} />
         ) : tab === 'adjustments' ? (
           <Table>
-            <TableHeader><TableRow className="bg-slate-50 hover:bg-slate-50"><TableHead className="pl-4">Colaborador</TableHead><TableHead>Motivo</TableHead><TableHead className="hidden md:table-cell">Registrado por</TableHead><TableHead className="pr-4 text-right">Valor</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="bg-slate-50 hover:bg-slate-50"><TableHead className="pl-4">Colaborador</TableHead><TableHead>Motivo</TableHead><TableHead className="hidden md:table-cell">Registrado por</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="pr-4 text-right">Ações</TableHead></TableRow></TableHeader>
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="py-3 pl-4 font-medium">{r.collaborator_name}</TableCell>
                   <TableCell className="text-slate-700">{r.reason}</TableCell>
                   <TableCell className="hidden text-sm text-slate-500 md:table-cell">{r.author_name}<span className="block text-xs">{fmtDateTime(r.created_at)}</span></TableCell>
-                  <TableCell className={cn('pr-4 text-right font-medium tabular-nums', r.amount_cents < 0 ? 'text-rose-700' : 'text-emerald-700')}>{r.amount_cents > 0 ? '+' : ''}{money(r.amount_cents)}</TableCell>
+                  <TableCell className={cn('text-right font-medium tabular-nums', r.amount_cents < 0 ? 'text-rose-700' : 'text-emerald-700')}>{r.amount_cents > 0 ? '+' : ''}{money(r.amount_cents)}</TableCell>
+                  <TableCell className="pr-4 text-right"><span className="inline-flex gap-1"><Button size="sm" variant="ghost" onClick={() => setAdjEdit(r)}>Editar</Button>{isGestor && <Button size="sm" variant="ghost" className="text-rose-700 hover:text-rose-800" onClick={() => setAct({ title: 'Excluir ajuste', description: `O ajuste de ${money(r.amount_cents)} para ${r.collaborator_name} será removido definitivamente.`, label: 'Excluir ajuste', danger: true, run: async () => { await rpc('delete_adjustment', { _id: r.id }, 'Ajuste excluído.', ['finance']); } })}>Excluir</Button>}</span></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -169,7 +172,7 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
                   <TableCell>
                     {r.status === 'paid' ? <span><Pill tone="success" dot>Pago</Pill><span className="mt-1 block text-xs text-slate-500">{fmtDateTime(r.paid_at)}{r.payment_method ? ` · ${r.payment_method}` : ''}{r.payment_reference ? ` ${r.payment_reference}` : ''}</span></span> : <Pill tone="warn" dot>Pendente</Pill>}
                   </TableCell>
-                  <TableCell className="pr-4 text-right">{r.status === 'pending' && <Button size="sm" variant="outline" onClick={() => setConfirm({ ids: [r.id], label: r.booking_code })}>Dar baixa</Button>}</TableCell>
+                  <TableCell className="pr-4 text-right">{r.status === 'pending' && <Button size="sm" variant="outline" onClick={() => setConfirm({ ids: [r.id], label: r.booking_code })}>Dar baixa</Button>}{r.status === 'paid' && isGestor && <Button size="sm" variant="ghost" onClick={() => setAct({ title: 'Estornar baixa', description: `A baixa de ${r.booking_code} será desfeita e o lançamento voltará a ficar pendente. O estorno fica registrado no histórico do atendimento.`, label: 'Estornar baixa', run: async () => { await rpc(tab === 'receivables' ? 'reopen_receivable' : 'reopen_payout', { _id: r.id }, 'Baixa estornada.', ['finance', 'events']); } })}>Estornar</Button>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -191,12 +194,13 @@ export function FinanceiroPage({ profile, intent, clearIntent }: PageProps) {
         label={confirm?.label || ''}
         onConfirm={async (m, ref) => { if (confirm) await settle(confirm.ids, m, ref); }}
       />
-      <AdjustmentSheet open={adjOpen} onOpenChange={setAdjOpen} isGestor={isGestor} payouts={payouts} />
+      <ConfirmDialog open={!!act} onOpenChange={(o) => !o && setAct(null)} danger={act?.danger} title={act?.title || ''} description={act?.description || ''} confirmLabel={act?.label || 'Confirmar'} onConfirm={() => (act ? act.run() : undefined)} />
+      <AdjustmentSheet open={adjOpen || !!adjEdit} onOpenChange={(o) => { if (!o) { setAdjOpen(false); setAdjEdit(null); } }} isGestor={isGestor} payouts={payouts} editing={adjEdit} />
     </>
   );
 }
 
-function AdjustmentSheet({ open, onOpenChange, isGestor, payouts }: { open: boolean; onOpenChange: (o: boolean) => void; isGestor: boolean; payouts: Row[] }) {
+function AdjustmentSheet({ open, onOpenChange, isGestor, payouts, editing }: { open: boolean; onOpenChange: (o: boolean) => void; isGestor: boolean; payouts: Row[]; editing: Row | null }) {
   const rpc = useRpc();
   const { data: team = [] } = useTeam(isGestor);
   const [member, setMember] = useState('');
@@ -207,13 +211,13 @@ function AdjustmentSheet({ open, onOpenChange, isGestor, payouts }: { open: bool
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (open) {
-      setMember('');
-      setKind('credit');
-      setCents(null);
-      setReason('');
+      setMember(editing ? String(editing.team_member_id || '') : '');
+      setKind(editing && Number(editing.amount_cents) < 0 ? 'debit' : 'credit');
+      setCents(editing ? Math.abs(Number(editing.amount_cents)) : null);
+      setReason(editing ? String(editing.reason) : '');
       setErrors({});
     }
-  }, [open]);
+  }, [open, editing]);
 
   const people: { id: string; name: string }[] = isGestor
     ? team.filter((m: Row) => m.active).map((m: Row) => ({ id: m.id, name: m.name }))
@@ -223,20 +227,25 @@ function AdjustmentSheet({ open, onOpenChange, isGestor, payouts }: { open: bool
     const e: Record<string, string> = {};
     if (!member) e.member = 'Selecione o colaborador.';
     if (!cents) e.cents = 'Informe um valor maior que zero.';
-    if (reason.trim().length < 3) e.reason = 'Descreva o motivo do ajuste.';
+    else if (cents > 1000000) e.cents = 'O valor máximo por ajuste é R$ 10.000,00.';
+    if (reason.trim().length < 5) e.reason = 'Descreva o motivo (mínimo de 5 caracteres).';
     setErrors(e);
     if (Object.keys(e).length || !cents) return;
     setBusy(true);
-    const ok = await rpc('add_adjustment', { _team_member_id: member, _amount_cents: kind === 'debit' ? -cents : cents, _reason: reason.trim() }, 'Ajuste lançado.', ['finance']);
+    const amount = kind === 'debit' ? -cents : cents;
+    const ok = editing
+      ? await rpc('update_adjustment', { _id: editing.id, _amount_cents: amount, _reason: reason.trim() }, 'Ajuste atualizado.', ['finance'])
+      : await rpc('add_adjustment', { _team_member_id: member, _amount_cents: amount, _reason: reason.trim() }, 'Ajuste lançado.', ['finance']);
     setBusy(false);
     if (ok) onOpenChange(false);
   }
 
   return (
-    <FormSheet open={open} onOpenChange={onOpenChange} title="Novo ajuste financeiro" description="Acréscimos e descontos aplicados a um colaborador. O lançamento fica registrado com autor e data." onSubmit={() => void submit()} submitLabel="Lançar ajuste" busy={busy}>
+    <FormSheet open={open} onOpenChange={onOpenChange} title={editing ? 'Editar ajuste financeiro' : 'Novo ajuste financeiro'} description={editing ? 'Corrija o valor ou o motivo. O colaborador do lançamento não pode ser alterado.' : 'Acréscimos e descontos aplicados a um colaborador. O lançamento fica registrado com autor e data.'} onSubmit={() => void submit()} submitLabel={editing ? 'Salvar alterações' : 'Lançar ajuste'} busy={busy}>
       <Field label="Colaborador" id="a-member" required error={errors.member} hint={!isGestor ? 'Você pode ajustar colaboradores que já constam em repasses.' : undefined}>
-        <NativeSelect id="a-member" value={member} onChange={(e) => setMember(e.target.value)}>
+        <NativeSelect id="a-member" value={member} disabled={!!editing} onChange={(e) => setMember(e.target.value)}>
           <option value="">Selecione o colaborador</option>
+          {editing && !people.some((p) => p.id === member) && <option value={member}>{String(editing.collaborator_name)}</option>}
           {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </NativeSelect>
       </Field>

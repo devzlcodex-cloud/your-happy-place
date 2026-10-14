@@ -177,8 +177,6 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --brand: oklch(0.68 0.15 236);
   --brand-soft: oklch(0.945 0.035 235);
-.brand-logo { display:block; background:oklch(1 0 0); border-radius:10px; padding:10px 12px; margin:0 16px 28px; }
-.brand-logo img { display:block; width:100%; height:auto; }
   --success: oklch(0.447 0.084 161);
   --success-soft: oklch(0.946 0.039 166);
   --warning: oklch(0.52 0.11 73);
@@ -219,3 +217,5 @@ h2 { font-size:16px; font-weight:750; }
 
 .mobile-wordmark { display:none; }
 @media(max-width:767px) { .mobile-wordmark { display:flex; flex-direction:column; align-items:center; line-height:1; }.mobile-wordmark strong { color:var(--primary); font-size:23px; font-style:italic; font-weight:800; }.mobile-wordmark small { color:var(--foreground); font-size:6px; letter-spacing:2px; margin-top:4px; }.topbar .demo-top { display:none; } }
+.brand-logo { display:block; background:oklch(1 0 0); border-radius:10px; padding:10px 12px; margin:0 16px 28px; }
+.brand-logo img { display:block; width:100%; height:auto; }

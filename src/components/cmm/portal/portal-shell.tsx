@@ -1,3 +1,4 @@
+import logo from "@/assets/cmm-logo.png.asset.json";
 import { Component, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -136,7 +137,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col bg-sidebar px-4 pt-9 pb-4 text-sidebar-foreground md:flex">
-        <div className="wordmark"><span>CMM</span><small>AVIATION</small></div>
+        <div className="brand-logo"><img src={logo.url} alt="CMM Aviation"/></div>
         <nav className="flex-1 space-y-6 text-sm font-medium" aria-label="Navegação principal">
           {groups.map((g) => (
             <div key={g}>

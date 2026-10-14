@@ -1,3 +1,4 @@
+import logo from "@/assets/cmm-logo.png.asset.json";
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -98,7 +99,7 @@ function LoginScreen({ onLogin, onDemo }: { onLogin: (session: any) => Promise<v
   return (
     <main className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_1fr]">
       <section className="hidden flex-col justify-between bg-sidebar p-12 text-sidebar-foreground lg:flex">
-        <div className="wordmark" style={{ margin: 0 }}><span>CMM</span><small>AVIATION</small></div>
+        <div className="brand-logo" style={{ margin: 0, maxWidth: 260 }}><img src={logo.url} alt="CMM Aviation"/></div>
         <div className="max-w-md">
           <div role="heading" aria-level={1} className="text-[34px] font-semibold leading-[1.2] tracking-tight text-sidebar-accent-foreground">Atendimento coordenado em cada operação.</div>
           <div className="mt-5 text-[15px] leading-7 text-sidebar-foreground/75">Agenda, equipe e financeiro das bases de Guarulhos (GRU) e Viracopos (VCP) em um só lugar, com acesso de acordo com a função de cada pessoa.</div>
@@ -108,7 +109,7 @@ function LoginScreen({ onLogin, onDemo }: { onLogin: (session: any) => Promise<v
 
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-10 lg:hidden"><div className="wordmark" style={{ margin: 0 }}><span style={{ fontSize: 38 }}>CMM</span><small style={{ color: 'var(--foreground)' }}>AVIATION</small></div></div>
+          <div className="mb-10 lg:hidden"><div style={{ maxWidth: 220 }}><img src={logo.url} alt="CMM Aviation"/></div></div>
           <h1 style={{ fontSize: 28, fontWeight: 650, lineHeight: 1.2, letterSpacing: '-0.01em' }}>Entrar no sistema</h1>
           <div className="mt-2 text-sm text-muted-foreground">Use as credenciais fornecidas pela coordenação.</div>
           <form onSubmit={submit} className="mt-8 space-y-5">

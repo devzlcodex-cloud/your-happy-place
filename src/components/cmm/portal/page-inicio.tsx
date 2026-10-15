@@ -101,8 +101,8 @@ export function InicioPage({ profile, go }: PageProps) {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} interval={1} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
                   <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }} labelFormatter={(l, p) => `${(p?.[0]?.payload as Row | undefined)?.weekday ?? ''}, ${l}`} />
-                  <Bar dataKey="GRU" stackId="a" fill="#006c6e" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="VCP" stackId="a" fill="#24c5be" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="GRU" stackId="a" fill="var(--primary)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="VCP" stackId="a" fill="var(--brand)" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

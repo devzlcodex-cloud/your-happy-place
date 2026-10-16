@@ -144,12 +144,14 @@ export function EvidenceSection({ bookingId }: { bookingId: string }) {
 }
 
 /* ---------- Event trail ---------- */
-export const useEvents = (bookingId?: string | null, limit = 40) =>
+/* Sem limite por padrão (histórico completo do atendimento). O sino de notificações pede só as mais recentes. */
+export const useEvents = (bookingId?: string | null, limit?: number) =>
   useQuery({
     queryKey: ['events', bookingId || 'all'],
     refetchInterval: 30_000,
     queryFn: async () => {
-      let q = db.from('booking_events').select('id,booking_id,scope,kind,message,actor_name,created_at').order('created_at', { ascending: false }).limit(limit);
+      let q = db.from('booking_events').select('id,booking_id,scope,kind,message,actor_name,created_at').order('created_at', { ascending: false });
+      if (limit) q = q.limit(limit);
       if (bookingId) q = q.eq('booking_id', bookingId);
       const { data, error } = await q;
       if (error) throw new Error(error.message);

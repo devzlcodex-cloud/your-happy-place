@@ -21,7 +21,7 @@ describe('Corporate access', () => {
   it('never exposes operational children without a session', async () => {
     mocks.getSession.mockResolvedValue({ data: { session: null } });
     render(<AuthBoundary><div data-testid="legacy-operations" /></AuthBoundary>);
-    await screen.findByRole('button', { name: 'Entrar', exact: true });
+    await screen.findByRole('button', { name: /^Entrar$/ });
     expect(screen.queryByTestId('legacy-operations')).not.toBeInTheDocument();
     expect(screen.queryByTestId('authorized-portal')).not.toBeInTheDocument();
     expect(mocks.rpc).not.toHaveBeenCalled();

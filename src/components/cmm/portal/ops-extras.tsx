@@ -215,6 +215,7 @@ const QUEUE_KEY = 'cmm-offline-queue-v1';
 type Queued = { fn: 'check_in' | 'check_out'; args: Row; label: string; at: string };
 const readQueue = (): Queued[] => { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; } };
 const writeQueue = (q: Queued[]) => { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); window.dispatchEvent(new Event('cmm-queue')); };
+const buzz = (p: number | number[]) => { try { navigator.vibrate?.(p); } catch { /* sem suporte */ } };
 const isNetwork = (m: string) => /failed to fetch|network|load failed/i.test(m);
 
 export function useFieldAction() {
@@ -223,6 +224,7 @@ export function useFieldAction() {
     const enqueue = () => {
       const q = readQueue();
       if (!q.some((x) => x.fn === fn && JSON.stringify(x.args) === JSON.stringify(args))) writeQueue([...q, { fn, args, label, at: new Date().toISOString() }]);
+      buzz([40, 60, 40]);
       toast.info('Sem conexão. A ação foi guardada e será enviada automaticamente quando o sinal voltar.');
       return true;
     };
@@ -237,6 +239,7 @@ export function useFieldAction() {
     } catch {
       return enqueue();
     }
+    buzz(60);
     toast.success(success);
     await Promise.all(['bookings', 'month-summary', 'events'].map((k) => qc.invalidateQueries({ queryKey: [k] })));
     return true;
@@ -316,7 +319,7 @@ export function SettleDialog({ open, label, title, onOpenChange, onConfirm }: { 
 }
 
 /* ---------- Printable report (save as PDF) ---------- */
-export function printReport(title: string, head: string[], rows: (string | number)[][], totalCents: number) {
+export function printReport(title: string, head: string[], rows: (string | number)[][], totalCents: number | null) {
   const esc = (v: unknown) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
   const w = window.open('', '_blank', 'width=900,height=700');
   if (!w) { toast.error('Permita janelas pop-up para gerar o PDF.'); return; }
@@ -325,8 +328,8 @@ export function printReport(title: string, head: string[], rows: (string | numbe
     .brand{font-weight:800;letter-spacing:.04em}.brand b{color:#0e9fb0}table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}
     th,td{border-bottom:1px solid #e2e8f0;padding:6px 8px;text-align:left}th{background:#f4f8f7}td.n{text-align:right}tfoot td{font-weight:700}
   </style></head><body><div class="brand"><b>CMM</b> AVIATION</div><h1>${esc(title)}</h1><small>Gerado em ${esc(fmtDateTime(new Date().toISOString()))}</small>
-  <table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i === r.length - 1 ? 'n' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
-  <tfoot><tr><td colspan="${head.length - 1}">Total (${rows.length} lançamentos)</td><td class="n">${esc(money(totalCents))}</td></tr></tfoot></table>
+  <table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td class="${totalCents !== null && i === r.length - 1 ? 'n' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+  ${totalCents === null ? '' : `<tfoot><tr><td colspan="${head.length - 1}">Total (${rows.length} lançamentos)</td><td class="n">${esc(money(totalCents))}</td></tr></tfoot>`}</table>
   <script>window.onload=()=>window.print()</script></body></html>`);
   w.document.close();
 }

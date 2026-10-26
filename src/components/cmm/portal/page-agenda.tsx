@@ -75,6 +75,7 @@ export function AgendaPage({ profile, intent, clearIntent }: PageProps) {
         description="Atendimentos por data, base e equipe, com acompanhamento de check-in em tempo real."
         actions={
           <>
+            <Button variant="outline" onClick={() => printReport('Escala de atendimentos', ['Data', 'Horário', 'Base', 'Voo', 'Cliente', 'Serviços', 'Equipe', 'Status'], filtered.map(({ b, st }) => [fmtDate(b.scheduled_date), fmtTime(b.scheduled_time), b.base, b.flight ? [b.flight.flight_number, b.flight.terminal, b.flight.gate].filter(Boolean).join(' • ') : '—', b.client_name, b.service_summary, b.sessions.map((s: Row) => s.collaborator_name).join(', '), STATUS[st].label]), null)} disabled={!filtered.length}><Printer className="mr-2 size-4" />Escala PDF</Button>
             <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}><Download className="mr-2 size-4" />Exportar</Button>
             {isGestor && <Button onClick={() => setSheet({ editing: null })}><Plus className="mr-2 size-4" />Novo agendamento</Button>}
           </>

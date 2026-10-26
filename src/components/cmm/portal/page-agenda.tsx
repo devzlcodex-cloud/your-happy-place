@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { addDays, format } from 'date-fns';
-import { CalendarDays, ChevronRight, Clock, Download, LogIn, LogOut, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { CalendarDays, ChevronRight, Clock, Download, LogIn, LogOut, Pencil, Plus, Printer, Trash2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { db, friendlyError, useBookingExtra, useBookings, useClients, useRpc, useServices, useTeam } from './data';
 import { BASES, STATUS, bookingStatus, dayParts, downloadCsv, fmtDate, fmtDateTime, fmtTime, money, nowLocalInput, todayIso, type Booking, type BookingStatus, type PageProps, type Row } from './lib';
-import { EventTimeline, EvidenceSection, FlightBadge, FlightSection } from './ops-extras';
+import { EventTimeline, EvidenceSection, FlightBadge, FlightSection, printReport } from './ops-extras';
 import { Avatar, ConfirmDialog, DetailSheet, EmptyState, ErrorState, Field, FormSheet, ListSkeleton, NativeSelect, Panel, PageHeader, Pill, SearchBox, SectionTitle, Segmented } from './ui';
 
 type Period = 'today' | 'week' | 'month' | 'all';
@@ -75,6 +75,7 @@ export function AgendaPage({ profile, intent, clearIntent }: PageProps) {
         description="Atendimentos por data, base e equipe, com acompanhamento de check-in em tempo real."
         actions={
           <>
+            <Button variant="outline" onClick={() => printReport('Escala de atendimentos', ['Data', 'Horário', 'Base', 'Voo', 'Cliente', 'Serviços', 'Equipe', 'Status'], filtered.map(({ b, st }) => [fmtDate(b.scheduled_date), fmtTime(b.scheduled_time), b.base, b.flight ? [b.flight.flight_number, b.flight.terminal, b.flight.gate].filter(Boolean).join(' • ') : '—', b.client_name, b.service_summary, b.sessions.map((s: Row) => s.collaborator_name).join(', '), STATUS[st].label]), null)} disabled={!filtered.length}><Printer className="mr-2 size-4" />Escala PDF</Button>
             <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}><Download className="mr-2 size-4" />Exportar</Button>
             {isGestor && <Button onClick={() => setSheet({ editing: null })}><Plus className="mr-2 size-4" />Novo agendamento</Button>}
           </>

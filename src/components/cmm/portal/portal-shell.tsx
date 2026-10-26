@@ -11,6 +11,7 @@ import { db } from './data';
 import { ROLE_LABEL, type PageKey, type Profile } from './lib';
 import { Avatar } from './ui';
 import { NotificationsBell } from './ops-extras';
+import { InstallHint } from './install-hint';
 import { InicioPage } from './page-inicio';
 import { AgendaPage } from './page-agenda';
 import { ClientesPage } from './page-clientes';
@@ -174,6 +175,7 @@ export function PortalShell({ profile }: { profile: Profile }) {
         </header>
 
         <main className="mx-auto max-w-[1240px] px-4 pb-28 pt-6 sm:px-8 md:pb-12 md:pt-8">
+          <InstallHint />
           <PageBoundary resetKey={page}>
             {page === 'inicio' && role === 'gestor' && <InicioPage {...props} />}
             {page === 'agenda' && (role === 'campo' ? <CampoPage {...props} /> : <AgendaPage {...props} />)}

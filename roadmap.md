@@ -8,4 +8,6 @@
 - [x] Baixa com forma de pagamento e transação; exportação planilha e PDF.
 - [x] Retirar entrada na demonstração; bloqueio sem sessão e perfil inválido verificado no preview e em testes.
 - [x] Preparar manifesto e ícones para tela inicial de iPhone/Android, sem cache offline nem publicação.
+- [x] Dica de instalação no celular, vibração no check-in/checkout, escala do dia em PDF.
+- [ ] Contato rápido na pista: aguarda telefone oficial da coordenação GRU/VCP.
 - [ ] Revalidar a sessão real no portal após login: aguarda o solicitante entrar no preview (não há conta correspondente disponível para teste automático).

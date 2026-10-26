@@ -7,13 +7,12 @@ import { PortalShell } from './portal/portal-shell';
 import { db } from './portal/data';
 import type { Profile } from './portal/lib';
 
-export function AuthBoundary({ children }: { children: ReactNode }) {
+export function AuthBoundary(_props: { children?: ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [recovery, setRecovery] = useState(false);
-  const [demo, setDemo] = useState(false);
 
   async function loadProfile(next: any) {
     setSession(next);
@@ -55,17 +54,6 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  if (demo && !session)
-    return (
-      <>
-        {children}
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/95 px-4 py-2 text-xs shadow-lg">
-          <ShieldCheck className="size-4 text-primary" />
-          Demonstração local com dados fictícios
-          <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setDemo(false)}>Sair da demonstração</Button>
-        </div>
-      </>
-    );
   if (!ready) return <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">Verificando acesso seguro…</div>;
   if (session && recovery)
     return (
@@ -77,10 +65,10 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
       />
     );
   if (session) return profile ? <PortalShell profile={profile} /> : <AccessDenied error={error} onLogout={() => db.auth.signOut()} />;
-  return <LoginScreen onLogin={loadProfile} onDemo={() => setDemo(true)} />;
+  return <LoginScreen onLogin={loadProfile} />;
 }
 
-function LoginScreen({ onLogin, onDemo }: { onLogin: (session: any) => Promise<void>; onDemo: () => void }) {
+function LoginScreen({ onLogin }: { onLogin: (session: any) => Promise<void> }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -126,7 +114,6 @@ function LoginScreen({ onLogin, onDemo }: { onLogin: (session: any) => Promise<v
           </form>
           <div className="mt-8 border-t pt-6">
             <div className="text-xs leading-5 text-muted-foreground">Ainda sem credenciais? A coordenação precisa cadastrar sua conta e atribuir um perfil antes do primeiro acesso.</div>
-            <Button variant="link" className="mt-2 h-auto p-0 text-xs text-muted-foreground" onClick={onDemo}>Explorar a demonstração com dados fictícios</Button>
           </div>
         </div>
       </section>
